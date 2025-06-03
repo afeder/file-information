@@ -17,6 +17,7 @@ const APP_ID: &str = "com.example.FileInformation";
 const TOOLTIP_MAX_CHARS: usize = 80;
 const RDF_TYPE: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
 const FILEDATAOBJECT: &str = "http://tracker.api.gnome.org/ontology/v3/nfo#FileDataObject";
+const XSD_DATETYPE: &str = "http://www.w3.org/2001/XMLSchema#dateType";
 
 fn main() {
     let mut args: Vec<String> = env::args().skip(1).collect();
@@ -458,7 +459,7 @@ fn ellipsize(s: &str, max_chars: usize) -> String {
 }
 
 fn friendly_display(obj: &str, dtype: &str) -> String {
-    if dtype.ends_with("#dateType") {
+    if dtype == XSD_DATETYPE {
         if let Ok(dt) = glib::DateTime::from_iso8601(obj, None)
             .and_then(|dt| dt.to_local())
             .and_then(|ldt| ldt.format("%F %T"))
