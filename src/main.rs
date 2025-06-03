@@ -497,3 +497,33 @@ fn friendly_label(uri: &str) -> String {
         .collect::<Vec<_>>()
         .join(" ")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ellipsize_shorter_than_limit() {
+        let input = "a".repeat(TOOLTIP_MAX_CHARS - 1);
+        assert_eq!(ellipsize(&input, TOOLTIP_MAX_CHARS), input);
+    }
+
+    #[test]
+    fn ellipsize_equal_to_limit() {
+        let input = "a".repeat(TOOLTIP_MAX_CHARS);
+        assert_eq!(ellipsize(&input, TOOLTIP_MAX_CHARS), input);
+    }
+
+    #[test]
+    fn ellipsize_longer_than_limit() {
+        let input = "a".repeat(TOOLTIP_MAX_CHARS + 5);
+        let expected = format!("{}…", "a".repeat(TOOLTIP_MAX_CHARS));
+        assert_eq!(ellipsize(&input, TOOLTIP_MAX_CHARS), expected);
+    }
+
+    #[test]
+    fn friendly_label_basic() {
+        let uri = "https://example.com/FooBarBaz";
+        assert_eq!(friendly_label(uri), "Foo Bar Baz");
+    }
+}
