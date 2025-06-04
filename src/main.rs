@@ -310,6 +310,14 @@ fn populate_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri
                     });
                     lbl_key.add_controller(gesture);
 
+                    let lbl_key_leave = lbl_key.clone();
+                    let pred_leave = pred.clone();
+                    let motion = gtk::EventControllerMotion::new();
+                    motion.connect_leave(move |_| {
+                        lbl_key_leave.set_tooltip_text(Some(&pred_leave));
+                    });
+                    lbl_key.add_controller(motion);
+
                     grid.attach(&lbl_key, 0, row, 1, 1);
                 }
 
