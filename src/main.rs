@@ -141,6 +141,11 @@ fn build_ui(app: &Application, uri: String) {
         }
         linkbutton.no-padding {
             padding: 0;
+            border: none;
+        }
+        linkbutton.no-padding * {
+            padding: 0;
+            margin: 0;
         }
     "#;
     provider.load_from_data(css);
@@ -419,6 +424,7 @@ fn populate_grid(
                         .uri(obj)
                         .label(obj)
                         .build();
+                    btn_link.set_has_frame(false);
                     btn_link.set_halign(gtk::Align::Start);
                     btn_link.set_margin_start(6);
                     btn_link.set_margin_top(4);
