@@ -37,3 +37,14 @@ Run the program with the path to a file or a URI. Prefix `--uri` when passing a 
 cargo run -- /path/to/file
 cargo run -- --uri tracker://...
 ```
+
+## Testing
+
+Run tests inside a virtual X server using Xvfb. Enable Mesa's software
+rasterizer so hardware graphics drivers are not required:
+
+```bash
+LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -s "-screen 0 1024x768x24" cargo test
+```
+
+Install `dbus-x11` to avoid warnings about the session bus.
