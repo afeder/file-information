@@ -139,11 +139,11 @@ fn build_ui(app: &Application, uri: String) {
             padding: 4px;
             margin-right: 6px;
         }
-        linkbutton.no-padding {
+        button.link.no-padding {
             padding: 0;
             border: none;
         }
-        linkbutton.no-padding * {
+        button.link.no-padding * {
             padding: 0;
             margin: 0;
         }
