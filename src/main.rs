@@ -437,6 +437,8 @@ fn populate_grid(
 
                         let buffer = txt.buffer();
                         buffer.set_text(&displayed_str);
+                        let start = buffer.start_iter();
+                        buffer.place_cursor(&start);
                         txt.upcast()
                     } else {
                         let lbl_val = Label::new(Some(&displayed_str));
