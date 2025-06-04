@@ -11,3 +11,15 @@ adw   = { package = "libadwaita", version = "0.7", features = ["v1_4"] }
 gdk4 = "0.9"
 
 tracker     = { package = "tracker-rs", version = "0.6" }
+
+[build-dependencies]
+system-deps = "7"
+
+[package.metadata.system-deps]
+glib = { name = "glib-2.0", version = "2.66" }
+gtk4 = { name = "gtk4", version = "4.0" }
+libadwaita_1 = { name = "libadwaita-1", version = "1.0" }
+cairo = { name = "cairo", version = "1.16" }
+pango = { name = "pango", version = "1.50" }
+gdk_pixbuf = { name = "gdk-pixbuf-2.0", version = "2.42" }
+tracker_sparql_3_0 = { name = "tracker-sparql-3.0", version = "3.0" }
