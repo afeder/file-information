@@ -187,7 +187,7 @@ fn build_ui(app: &Application, uri: String) {
     header_label.set_text(if is_file_data_object {
         "File Information"
     } else {
-        "Resource Information"
+        "Node Information"
     });
 }
 
