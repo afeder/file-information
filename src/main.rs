@@ -492,6 +492,13 @@ mod tests {
     }
 
     #[test]
+    fn ellipsize_multibyte_characters() {
+        let input = "é".repeat(TOOLTIP_MAX_CHARS + 2);
+        let expected = format!("{}…", "é".repeat(TOOLTIP_MAX_CHARS));
+        assert_eq!(ellipsize(&input, TOOLTIP_MAX_CHARS), expected);
+    }
+
+    #[test]
     fn friendly_label_basic() {
         let uri = "https://example.com/FooBarBaz";
         assert_eq!(friendly_label(uri), "Foo Bar Baz");
@@ -507,5 +514,27 @@ mod tests {
     fn friendly_label_trailing_hash() {
         let uri = "https://example.com/FooBarBaz#";
         assert_eq!(friendly_label(uri), "Foo Bar Baz");
+    }
+
+    #[test]
+    fn friendly_value_formats_date() {
+        let raw = "2024-06-04T12:34:56Z";
+        let expected = glib::DateTime::from_iso8601(raw, None)
+            .and_then(|dt| dt.to_local())
+            .and_then(|ldt| ldt.format("%F %T"))
+            .unwrap();
+        assert_eq!(friendly_value(raw, XSD_DATETYPE), expected);
+    }
+
+    #[test]
+    fn friendly_value_invalid_date() {
+        let raw = "invalid";
+        assert_eq!(friendly_value(raw, XSD_DATETYPE), raw);
+    }
+
+    #[test]
+    fn friendly_value_unrelated_type() {
+        let raw = "hello";
+        assert_eq!(friendly_value(raw, "other"), raw);
     }
 }
