@@ -14,6 +14,7 @@ use tracker::prelude::SparqlCursorExtManual;
 
 const APP_ID: &str = "com.example.FileInformation";
 const TOOLTIP_MAX_CHARS: usize = 80;
+const COMMENT_TOOLTIP_MAX_CHARS: usize = TOOLTIP_MAX_CHARS * 3;
 const RDF_TYPE: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
 const XSD_DATETYPE: &str = "http://www.w3.org/2001/XMLSchema#dateType";
 const RDFS_COMMENT: &str = "http://www.w3.org/2000/01/rdf-schema#comment";
@@ -302,7 +303,7 @@ fn populate_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri
                     gesture.set_button(1);
                     gesture.connect_pressed(move |_, _, _, _| {
                         if let Some(comment) = fetch_comment(&pred_clone) {
-                            let tip = ellipsize(&comment, TOOLTIP_MAX_CHARS);
+                            let tip = ellipsize(&comment, COMMENT_TOOLTIP_MAX_CHARS);
                             lbl_key_clone.set_tooltip_text(Some(&tip));
                             let lbl_ref = lbl_key_clone.clone();
                             glib::idle_add_local_once(move || {
