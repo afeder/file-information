@@ -8,7 +8,6 @@ use gtk::WrapMode as GtkWrapMode;
 use gtk::pango;
 use gtk::{
     CssProvider, Grid, Label, TextView, Widget, Orientation, Button, Box as GtkBox,
-    LinkButton,
 };
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -138,14 +137,6 @@ fn build_ui(app: &Application, uri: String) {
             border: 1px solid @separator_color;
             padding: 4px;
             margin-right: 6px;
-        }
-        button.link.no-padding {
-            padding: 0;
-            border: none;
-        }
-        button.link.no-padding > * {
-            padding: 0;
-            margin: 0;
         }
     "#;
     provider.load_from_data(css);
@@ -420,33 +411,32 @@ fn populate_grid(
                 let native_str = obj.clone();
 
                 let widget: gtk::Widget = if dtype.is_empty() {
-                    let btn_link = LinkButton::builder()
-                        .uri(obj)
-                        .label(obj)
-                        .build();
-                    btn_link.set_has_frame(false);
-                    btn_link.set_halign(gtk::Align::Start);
-                    btn_link.set_margin_start(6);
-                    btn_link.set_margin_top(4);
-                    btn_link.set_margin_bottom(4);
-                    btn_link.style_context().add_class("no-padding");
+                    let lbl_link = Label::new(None);
+                    lbl_link.set_markup(&format!("<a href=\"{0}\">{0}</a>", obj));
+                    lbl_link.set_halign(gtk::Align::Start);
+                    lbl_link.set_margin_start(6);
+                    lbl_link.set_margin_top(4);
+                    lbl_link.set_margin_bottom(4);
 
                     let app_clone = app.clone();
-                    btn_link.connect_activate_link(move |btn| {
-                        let uri = btn.uri();
+                    lbl_link.connect_activate_link(move |_lbl, uri| {
                         build_ui(&app_clone, uri.to_string());
                         Propagation::Stop
                     });
 
+                    lbl_link.set_wrap(true);
+                    lbl_link.set_wrap_mode(pango::WrapMode::WordChar);
+                    lbl_link.set_max_width_chars(80);
+
                     add_copy_menu(
-                        &btn_link,
+                        &lbl_link,
                         &displayed_str,
                         &native_str,
                         "Copy Displayed Value",
                         "Copy Native Value",
                     );
 
-                    btn_link.upcast()
+                    lbl_link.upcast()
                 } else {
                     if obj.contains('\n') {
                         let txt = TextView::new();
