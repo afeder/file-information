@@ -14,10 +14,10 @@ use tracker::prelude::SparqlCursorExtManual;
 
 const APP_ID: &str = "com.example.FileInformation";
 const TOOLTIP_MAX_CHARS: usize = 80;
+const COMMENT_TOOLTIP_MAX_CHARS: usize = TOOLTIP_MAX_CHARS * 3;
 const RDF_TYPE: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
 const XSD_DATETYPE: &str = "http://www.w3.org/2001/XMLSchema#dateType";
 const RDFS_COMMENT: &str = "http://www.w3.org/2000/01/rdf-schema#comment";
-const COMMENT_TOOLTIP_MAX_CHARS: usize = 160;
 const FILEDATAOBJECT: &str = "http://tracker.api.gnome.org/ontology/v3/nfo#FileDataObject";
 
 fn main() {
