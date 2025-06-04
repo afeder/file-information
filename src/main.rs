@@ -127,20 +127,29 @@ fn build_ui(app: &Application, uri: String) {
     open_uri_action.connect_activate(move |_action, param| {
         if let Some(v) = param {
             if let Some(uri) = v.str() {
-                if let Err(err) = gio::AppInfo::launch_default_for_uri(
-                    uri,
-                    None::<&gio::AppLaunchContext>,
-                ) {
+                let report = |msg: String| {
                     let dialog = gtk::MessageDialog::builder()
                         .transient_for(&win_for_uri)
                         .modal(true)
                         .message_type(gtk::MessageType::Info)
                         .buttons(gtk::ButtonsType::Ok)
                         .text("Could not open URI")
-                        .secondary_text(&format!("{}", err))
+                        .secondary_text(&msg)
                         .build();
                     dialog.connect_response(|dlg, _| dlg.close());
                     dialog.show();
+                };
+                if let Ok(url) = Url::parse(uri) {
+                    if gio::AppInfo::default_for_uri_scheme(url.scheme()).is_none() {
+                        report(format!("No application available for scheme \"{}:\".", url.scheme()));
+                        return;
+                    }
+                }
+                if let Err(err) = gio::AppInfo::launch_default_for_uri(
+                    uri,
+                    None::<&gio::AppLaunchContext>,
+                ) {
+                    report(err.to_string());
                 }
             }
         }
