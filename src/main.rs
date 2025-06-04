@@ -9,8 +9,11 @@ use gtk::pango;
 use gtk::{
     CssProvider, Grid, Label, TextView, Widget, Orientation, Button, Box as GtkBox,
 };
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
+use std::rc::Rc;
+use csv::WriterBuilder;
 use tracker::SparqlConnection;
 use tracker::prelude::SparqlCursorExtManual;
 
@@ -21,6 +24,14 @@ const RDF_TYPE: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
 const XSD_DATETYPE: &str = "http://www.w3.org/2001/XMLSchema#dateType";
 const RDFS_COMMENT: &str = "http://www.w3.org/2000/01/rdf-schema#comment";
 const FILEDATAOBJECT: &str = "http://tracker.api.gnome.org/ontology/v3/nfo#FileDataObject";
+
+#[derive(Clone, Default)]
+struct TableRow {
+    display_predicate: String,
+    native_predicate: String,
+    display_value: String,
+    native_value: String,
+}
 
 fn main() {
     let mut args: Vec<String> = env::args().skip(1).collect();
@@ -161,18 +172,48 @@ fn build_ui(app: &Application, uri: String) {
     let toolbar = ToolbarView::new();
     toolbar.add_top_bar(&header);
 
+    let table_data: Rc<RefCell<Vec<TableRow>>> = Rc::new(RefCell::new(Vec::new()));
+
     let close_button = Button::with_label("Close");
     let win_clone = window.clone();
     close_button.connect_clicked(move |_| {
         win_clone.close();
     });
 
+    let copy_button = Button::with_label("Copy");
+    let data_clone = table_data.clone();
+    copy_button.connect_clicked(move |_| {
+        let rows = data_clone.borrow();
+        let mut wtr = WriterBuilder::new().has_headers(true).from_writer(vec![]);
+        let _ = wtr.write_record([
+            "Display Predicate",
+            "Native Predicate",
+            "Display Value",
+            "Native Value",
+        ]);
+        for r in rows.iter() {
+            let _ = wtr.write_record([
+                &r.display_predicate,
+                &r.native_predicate,
+                &r.display_value,
+                &r.native_value,
+            ]);
+        }
+        if let Ok(data) = String::from_utf8(wtr.into_inner().unwrap_or_default()) {
+            if let Some(display) = Display::default() {
+                display.clipboard().set_text(&data);
+            }
+        }
+    });
+
     let bottom_box = GtkBox::new(Orientation::Horizontal, 0);
+    bottom_box.set_spacing(5);
     bottom_box.set_halign(gtk::Align::End);
     bottom_box.set_margin_start(6);
     bottom_box.set_margin_end(6);
     bottom_box.set_margin_top(6);
     bottom_box.set_margin_bottom(6);
+    bottom_box.append(&copy_button);
     bottom_box.append(&close_button);
     toolbar.add_bottom_bar(&bottom_box);
 
@@ -182,7 +223,9 @@ fn build_ui(app: &Application, uri: String) {
 
     let app_clone = app.clone();
 
-    let is_file_data_object = populate_grid(&app_clone, &window, &grid, &uri);
+    let (is_file_data_object, rows) = populate_grid(&app_clone, &window, &grid, &uri);
+    table_data.borrow_mut().clear();
+    table_data.borrow_mut().extend(rows);
 
     header_label.set_text(if is_file_data_object {
         "File Information"
@@ -191,10 +234,17 @@ fn build_ui(app: &Application, uri: String) {
     });
 }
 
-fn populate_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri: &str) -> bool {
+fn populate_grid(
+    app: &Application,
+    window: &ApplicationWindow,
+    grid: &Grid,
+    uri: &str,
+) -> (bool, Vec<TableRow>) {
     while let Some(child) = grid.first_child() {
         grid.remove(&child);
     }
+
+    let mut rows_vec = Vec::new();
 
     let id_label = Label::new(Some("Identifier"));
     id_label.set_halign(gtk::Align::Start);
@@ -226,6 +276,12 @@ fn populate_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri
 
     grid.attach(&id_label, 0, 0, 1, 1);
     grid.attach(&uri_label, 1, 0, 1, 1);
+    rows_vec.push(TableRow {
+        display_predicate: "Identifier".to_string(),
+        native_predicate: "Identifier".to_string(),
+        display_value: uri.to_string(),
+        native_value: uri.to_string(),
+    });
 
     let conn = match SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None) {
         Ok(c) => c,
@@ -240,7 +296,7 @@ fn populate_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri
                 .build();
             dialog.connect_response(|dlg, _| dlg.close());
             dialog.show();
-            return false;
+            return (false, Vec::new());
         }
     };
 
@@ -265,7 +321,7 @@ fn populate_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri
                 .build();
             dialog.connect_response(|dlg, _| dlg.close());
             dialog.show();
-            return false;
+            return (false, Vec::new());
         }
     };
 
@@ -407,11 +463,17 @@ fn populate_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri
                 widget.set_tooltip_text(Some(&tooltip_text));
 
                 grid.attach(&widget, 1, row, 1, 1);
+                rows_vec.push(TableRow {
+                    display_predicate: label_text.clone(),
+                    native_predicate: pred.clone(),
+                    display_value: displayed_str.clone(),
+                    native_value: native_str.clone(),
+                });
                 row += 1;
             }
         }
     }
-    is_file_data_object
+    (is_file_data_object, rows_vec)
 }
 
 fn friendly_label(uri: &str) -> String {
