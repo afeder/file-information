@@ -301,11 +301,13 @@ fn populate_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri
                     let gesture = gtk::GestureClick::new();
                     gesture.set_button(1);
                     gesture.connect_pressed(move |_, _, _, _| {
-                        lbl_key_clone.set_tooltip_text(None);
                         if let Some(comment) = fetch_comment(&pred_clone) {
                             let tip = ellipsize(&comment, TOOLTIP_MAX_CHARS);
                             lbl_key_clone.set_tooltip_text(Some(&tip));
-                            lbl_key_clone.trigger_tooltip_query();
+                            let lbl_ref = lbl_key_clone.clone();
+                            glib::idle_add_local_once(move || {
+                                lbl_ref.trigger_tooltip_query();
+                            });
                         }
                     });
                     lbl_key.add_controller(gesture);
@@ -492,7 +494,8 @@ where
 }
 
 fn fetch_comment(predicate: &str) -> Option<String> {
-    let conn = SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None).ok()?;
+    let conn =
+        SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None).ok()?;
     let sparql = format!(
         "SELECT ?c WHERE {{ <{pred}> <{comment}> ?c }} LIMIT 1",
         pred = predicate,
