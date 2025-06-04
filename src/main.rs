@@ -163,10 +163,15 @@ fn build_ui(app: &Application, uri: String) {
         .build();
     grid.set_widget_name("data-grid");
 
+    let viewport = gtk::Viewport::builder()
+        .scroll_to_focus(false)
+        .child(&grid)
+        .build();
+
     let scroll = gtk::ScrolledWindow::builder()
         .min_content_width(590)
         .min_content_height(400)
-        .child(&grid)
+        .child(&viewport)
         .build();
 
     let toolbar = ToolbarView::new();
@@ -437,6 +442,8 @@ fn populate_grid(
 
                         let buffer = txt.buffer();
                         buffer.set_text(&displayed_str);
+                        let start = buffer.start_iter();
+                        buffer.place_cursor(&start);
                         txt.upcast()
                     } else {
                         let lbl_val = Label::new(Some(&displayed_str));
