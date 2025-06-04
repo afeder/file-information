@@ -590,14 +590,20 @@ where
 
         let popover = gtk::PopoverMenu::from_model(Some(&menu_model));
 
-        let rect = Rectangle::new(x as i32, y as i32, 1, 1);
-        popover.set_pointing_to(Some(&rect));
-
-        if let Some(root) = widget_clone.root() {
-            popover.set_parent(&root);
+        let (parent, rect) = if let Some(root) = widget_clone.root() {
+            if let Some((rx, ry)) = widget_clone
+                .translate_coordinates(&root, x, y)
+            {
+                (root.upcast::<Widget>(), Rectangle::new(rx as i32, ry as i32, 1, 1))
+            } else {
+                (root.upcast::<Widget>(), Rectangle::new(x as i32, y as i32, 1, 1))
+            }
         } else {
-            popover.set_parent(&widget_clone);
-        }
+            (widget_clone.clone(), Rectangle::new(x as i32, y as i32, 1, 1))
+        };
+
+        popover.set_parent(&parent);
+        popover.set_pointing_to(Some(&rect));
         popover.popup();
     });
 
