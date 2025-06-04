@@ -1,17 +1,16 @@
-use gtk::prelude::*;
-use gtk::{CssProvider, Grid, Label, TextView, Widget};
-use gtk::pango;
-use gtk::WrapMode as GtkWrapMode;
-use gio::{Cancellable, ApplicationFlags};
-use gdk4::Rectangle;
-use gdk4::Display;
 use adw::prelude::*;
 use adw::{Application, ApplicationWindow, HeaderBar, ToolbarView};
-use tracker::prelude::SparqlCursorExtManual;
-use tracker::SparqlConnection;
+use gdk4::Display;
+use gdk4::Rectangle;
+use gio::{ApplicationFlags, Cancellable};
+use glib::{Propagation, Variant, VariantTy};
+use gtk::WrapMode as GtkWrapMode;
+use gtk::pango;
+use gtk::{CssProvider, Grid, Label, TextView, Widget};
 use std::collections::HashMap;
-use glib::{Variant, VariantTy, Propagation};
 use std::env;
+use tracker::SparqlConnection;
+use tracker::prelude::SparqlCursorExtManual;
 
 const APP_ID: &str = "com.example.FileInformation";
 const TOOLTIP_MAX_CHARS: usize = 80;
@@ -165,21 +164,14 @@ fn build_ui(app: &Application, uri: String) {
 
     let is_file_data_object = populate_grid(&app_clone, &window, &grid, &uri);
 
-    header_label.set_text(
-        if is_file_data_object {
-            "File Information"
-        } else {
-            "Resource Information"
-        }
-    );
+    header_label.set_text(if is_file_data_object {
+        "File Information"
+    } else {
+        "Resource Information"
+    });
 }
 
-fn populate_grid(
-    app: &Application,
-    window: &ApplicationWindow,
-    grid: &Grid,
-    uri: &str,
-) -> bool {
+fn populate_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri: &str) -> bool {
     while let Some(child) = grid.first_child() {
         grid.remove(&child);
     }
@@ -197,10 +189,17 @@ fn populate_grid(
     uri_label.set_margin_start(6);
     uri_label.set_margin_top(4);
     uri_label.set_margin_bottom(4);
-    uri_label.set_selectable(true);
     uri_label.set_wrap(true);
     uri_label.set_wrap_mode(pango::WrapMode::WordChar);
     uri_label.set_max_width_chars(80);
+
+    add_copy_menu(
+        &uri_label,
+        uri,
+        uri,
+        "Copy Displayed Value",
+        "Copy Native Value",
+    );
 
     let tooltip_text = ellipsize(uri, TOOLTIP_MAX_CHARS);
     uri_label.set_tooltip_text(Some(&tooltip_text));
@@ -208,11 +207,7 @@ fn populate_grid(
     grid.attach(&id_label, 0, 0, 1, 1);
     grid.attach(&uri_label, 1, 0, 1, 1);
 
-    let conn = match SparqlConnection::bus_new(
-        "org.freedesktop.Tracker3.Miner.Files",
-        None,
-        None,
-    ) {
+    let conn = match SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None) {
         Ok(c) => c,
         Err(err) => {
             let dialog = gtk::MessageDialog::builder()
@@ -267,7 +262,9 @@ fn populate_grid(
             order.push(pred.clone());
             map.insert(pred.clone(), Vec::new());
         }
-        map.get_mut(&pred).unwrap().push((obj.clone(), dtype.clone()));
+        map.get_mut(&pred)
+            .unwrap()
+            .push((obj.clone(), dtype.clone()));
 
         if pred == RDF_TYPE && obj == FILEDATAOBJECT {
             is_file_data_object = true;
@@ -290,43 +287,13 @@ fn populate_grid(
                     lbl_key.set_margin_top(4);
                     lbl_key.set_margin_bottom(4);
 
-                    let gesture = gtk::GestureClick::new();
-                    gesture.set_button(3);
-
-                    let disp_clone = label_text.clone();
-                    let native_clone = pred.clone();
-                    let widget_clone: Widget = lbl_key.clone().upcast();
-
-                    gesture.connect_pressed(move |_gesture, _n_press, x, y| {
-                        let menu_model = gio::Menu::new();
-
-                        let copy_disp_item = gio::MenuItem::new(
-                            Some("Copy Displayed Predicate"),
-                            Some("win.copy-displayed-value"),
-                        );
-                        let disp_variant = Variant::from(&disp_clone as &str);
-                        copy_disp_item
-                            .set_attribute_value("target", Some(&disp_variant));
-                        menu_model.append_item(&copy_disp_item);
-
-                        let copy_nat_item = gio::MenuItem::new(
-                            Some("Copy Native Predicate"),
-                            Some("win.copy-native-value"),
-                        );
-                        let nat_variant = Variant::from(&native_clone as &str);
-                        copy_nat_item
-                            .set_attribute_value("target", Some(&nat_variant));
-                        menu_model.append_item(&copy_nat_item);
-
-                        let popover = gtk::PopoverMenu::from_model(Some(&menu_model));
-
-                        let rect = Rectangle::new(x as i32, y as i32, 1, 1);
-                        popover.set_pointing_to(Some(&rect));
-
-                        popover.set_parent(&widget_clone);
-                        popover.popup();
-                    });
-                    lbl_key.add_controller(gesture);
+                    add_copy_menu(
+                        &lbl_key,
+                        &label_text,
+                        &pred,
+                        "Copy Displayed Predicate",
+                        "Copy Native Predicate",
+                    );
 
                     grid.attach(&lbl_key, 0, row, 1, 1);
                 }
@@ -381,50 +348,13 @@ fn populate_grid(
                         lbl_val.set_wrap_mode(pango::WrapMode::WordChar);
                         lbl_val.set_max_width_chars(80);
 
-                        let gesture = gtk::GestureClick::new();
-                        gesture.set_button(3);
-
-                        let disp_clone = displayed_str.clone();
-                        let native_clone = native_str.clone();
-                        let widget_clone: Widget = lbl_val.clone().upcast();
-
-                        gesture.connect_pressed(
-                            move |_gesture, _n_press, x, y| {
-                                let menu_model = gio::Menu::new();
-
-                                let copy_disp_item = gio::MenuItem::new(
-                                    Some("Copy Displayed Value"),
-                                    Some("win.copy-displayed-value"),
-                                );
-                                let disp_variant =
-                                    Variant::from(&disp_clone as &str);
-                                copy_disp_item
-                                    .set_attribute_value("target", Some(&disp_variant));
-                                menu_model.append_item(&copy_disp_item);
-
-                                let copy_nat_item = gio::MenuItem::new(
-                                    Some("Copy Native Value"),
-                                    Some("win.copy-native-value"),
-                                );
-                                let nat_variant =
-                                    Variant::from(&native_clone as &str);
-                                copy_nat_item
-                                    .set_attribute_value("target", Some(&nat_variant));
-                                menu_model.append_item(&copy_nat_item);
-
-                                let popover =
-                                    gtk::PopoverMenu::from_model(Some(&menu_model));
-
-                                let rect =
-                                    Rectangle::new(x as i32, y as i32, 1, 1);
-                                popover.set_pointing_to(Some(&rect));
-
-                                popover.set_parent(&widget_clone);
-                                popover.popup();
-                            },
+                        add_copy_menu(
+                            &lbl_val,
+                            &displayed_str,
+                            &native_str,
+                            "Copy Displayed Value",
+                            "Copy Native Value",
                         );
-
-                        lbl_val.add_controller(gesture);
                         lbl_val.upcast()
                     }
                 };
@@ -496,6 +426,45 @@ fn ellipsize(s: &str, max_chars: usize) -> String {
     } else {
         s.to_string()
     }
+}
+
+fn add_copy_menu<W>(widget: &W, displayed: &str, native: &str, disp_label: &str, nat_label: &str)
+where
+    W: IsA<gtk::Widget> + Clone + 'static,
+{
+    let gesture = gtk::GestureClick::new();
+    gesture.set_button(3);
+
+    let disp_clone = displayed.to_string();
+    let native_clone = native.to_string();
+    let disp_label_str = disp_label.to_string();
+    let nat_label_str = nat_label.to_string();
+    let widget_clone: Widget = widget.clone().upcast();
+
+    gesture.connect_pressed(move |_gesture, _n_press, x, y| {
+        let menu_model = gio::Menu::new();
+
+        let copy_disp_item =
+            gio::MenuItem::new(Some(&disp_label_str), Some("win.copy-displayed-value"));
+        let disp_variant = Variant::from(disp_clone.as_str());
+        copy_disp_item.set_attribute_value("target", Some(&disp_variant));
+        menu_model.append_item(&copy_disp_item);
+
+        let copy_nat_item = gio::MenuItem::new(Some(&nat_label_str), Some("win.copy-native-value"));
+        let nat_variant = Variant::from(native_clone.as_str());
+        copy_nat_item.set_attribute_value("target", Some(&nat_variant));
+        menu_model.append_item(&copy_nat_item);
+
+        let popover = gtk::PopoverMenu::from_model(Some(&menu_model));
+
+        let rect = Rectangle::new(x as i32, y as i32, 1, 1);
+        popover.set_pointing_to(Some(&rect));
+
+        popover.set_parent(&widget_clone);
+        popover.popup();
+    });
+
+    widget.add_controller(gesture);
 }
 
 #[cfg(test)]
