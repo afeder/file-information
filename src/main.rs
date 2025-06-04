@@ -163,10 +163,15 @@ fn build_ui(app: &Application, uri: String) {
         .build();
     grid.set_widget_name("data-grid");
 
+    let viewport = gtk::Viewport::builder()
+        .scroll_to_focus(false)
+        .child(&grid)
+        .build();
+
     let scroll = gtk::ScrolledWindow::builder()
         .min_content_width(590)
         .min_content_height(400)
-        .child(&grid)
+        .child(&viewport)
         .build();
 
     let toolbar = ToolbarView::new();
