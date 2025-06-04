@@ -139,6 +139,9 @@ fn build_ui(app: &Application, uri: String) {
             padding: 4px;
             margin-right: 6px;
         }
+        linkbutton.no-padding {
+            padding: 0;
+        }
     "#;
     provider.load_from_data(css);
     if let Some(display) = Display::default() {
@@ -420,6 +423,7 @@ fn populate_grid(
                     btn_link.set_margin_start(6);
                     btn_link.set_margin_top(4);
                     btn_link.set_margin_bottom(4);
+                    btn_link.style_context().add_class("no-padding");
 
                     let app_clone = app.clone();
                     btn_link.connect_activate_link(move |btn| {
