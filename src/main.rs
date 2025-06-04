@@ -427,6 +427,15 @@ fn populate_grid(
                     lbl_link.set_wrap(true);
                     lbl_link.set_wrap_mode(pango::WrapMode::WordChar);
                     lbl_link.set_max_width_chars(80);
+
+                    add_copy_menu(
+                        &lbl_link,
+                        &displayed_str,
+                        &native_str,
+                        "Copy Displayed Value",
+                        "Copy Native Value",
+                    );
+
                     lbl_link.upcast()
                 } else {
                     if obj.contains('\n') {
