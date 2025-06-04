@@ -122,11 +122,26 @@ fn build_ui(app: &Application, uri: String) {
     });
     window.add_action(&copy_nat);
 
+    let win_for_uri = window.clone();
     let open_uri_action = gio::SimpleAction::new("open-uri", Some(&VariantTy::STRING));
     open_uri_action.connect_activate(move |_action, param| {
         if let Some(v) = param {
             if let Some(uri) = v.str() {
-                let _ = gio::AppInfo::launch_default_for_uri(uri, None::<&gio::AppLaunchContext>);
+                if let Err(err) = gio::AppInfo::launch_default_for_uri(
+                    uri,
+                    None::<&gio::AppLaunchContext>,
+                ) {
+                    let dialog = gtk::MessageDialog::builder()
+                        .transient_for(&win_for_uri)
+                        .modal(true)
+                        .message_type(gtk::MessageType::Info)
+                        .buttons(gtk::ButtonsType::Ok)
+                        .text("Could not open URI")
+                        .secondary_text(&format!("{}", err))
+                        .build();
+                    dialog.connect_response(|dlg, _| dlg.close());
+                    dialog.show();
+                }
             }
         }
     });
