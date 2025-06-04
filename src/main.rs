@@ -92,7 +92,7 @@ fn main() {
 fn build_ui(app: &Application, uri: String) {
     let window = ApplicationWindow::builder()
         .application(app)
-        .default_width(600)
+        .default_width(590)
         .default_height(400)
         .title("File Information")
         .build();
@@ -164,7 +164,7 @@ fn build_ui(app: &Application, uri: String) {
     grid.set_widget_name("data-grid");
 
     let scroll = gtk::ScrolledWindow::builder()
-        .min_content_width(600)
+        .min_content_width(590)
         .min_content_height(400)
         .child(&grid)
         .build();
