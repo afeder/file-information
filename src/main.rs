@@ -143,7 +143,7 @@ fn build_ui(app: &Application, uri: String) {
             padding: 0;
             border: none;
         }
-        button.link.no-padding * {
+        button.link.no-padding > * {
             padding: 0;
             margin: 0;
         }
@@ -593,7 +593,11 @@ where
         let rect = Rectangle::new(x as i32, y as i32, 1, 1);
         popover.set_pointing_to(Some(&rect));
 
-        popover.set_parent(&widget_clone);
+        if let Some(root) = widget_clone.root() {
+            popover.set_parent(&root);
+        } else {
+            popover.set_parent(&widget_clone);
+        }
         popover.popup();
     });
 
