@@ -123,6 +123,16 @@ fn build_ui(app: &Application, uri: String) {
     });
     window.add_action(&copy_nat);
 
+    let open_uri_action = gio::SimpleAction::new("open-uri", Some(&VariantTy::STRING));
+    open_uri_action.connect_activate(move |_action, param| {
+        if let Some(v) = param {
+            if let Some(uri) = v.str() {
+                let _ = gio::AppInfo::launch_default_for_uri(uri, None::<&gio::AppLaunchContext>);
+            }
+        }
+    });
+    window.add_action(&open_uri_action);
+
     let provider = CssProvider::new();
     let css = r#"
         grid#data-grid {
@@ -551,6 +561,20 @@ fn ellipsize(s: &str, max_chars: usize) -> String {
     }
 }
 
+fn looks_like_uri(s: &str) -> bool {
+    if let Some(pos) = s.find(':') {
+        let scheme = &s[..pos];
+        if !scheme.is_empty()
+            && scheme
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '-' || c == '.')
+        {
+            return true;
+        }
+    }
+    false
+}
+
 fn add_copy_menu<W>(widget: &W, displayed: &str, native: &str, disp_label: &str, nat_label: &str)
 where
     W: IsA<gtk::Widget> + Clone + 'static,
@@ -579,6 +603,13 @@ where
         let nat_variant = Variant::from(native_clone.as_str());
         copy_nat_item.set_attribute_value("target", Some(&nat_variant));
         menu_model.append_item(&copy_nat_item);
+
+        if looks_like_uri(&native_clone) {
+            let open_item = gio::MenuItem::new(Some("Open Externally"), Some("win.open-uri"));
+            let uri_variant = Variant::from(native_clone.as_str());
+            open_item.set_attribute_value("target", Some(&uri_variant));
+            menu_model.append_item(&open_item);
+        }
 
         let popover = gtk::PopoverMenu::from_model(Some(&menu_model));
 
@@ -686,5 +717,15 @@ mod tests {
     fn friendly_value_unrelated_type() {
         let raw = "hello";
         assert_eq!(friendly_value(raw, "other"), raw);
+    }
+
+    #[test]
+    fn looks_like_uri_valid() {
+        assert!(looks_like_uri("https://example.com"));
+    }
+
+    #[test]
+    fn looks_like_uri_invalid() {
+        assert!(!looks_like_uri("not a uri"));
     }
 }
