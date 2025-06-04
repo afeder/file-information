@@ -6,7 +6,9 @@ use gio::{ApplicationFlags, Cancellable};
 use glib::{Propagation, Variant, VariantTy};
 use gtk::WrapMode as GtkWrapMode;
 use gtk::pango;
-use gtk::{CssProvider, Grid, Label, TextView, Widget};
+use gtk::{
+    CssProvider, Grid, Label, TextView, Widget, Orientation, Button, Box as GtkBox,
+};
 use std::collections::HashMap;
 use std::env;
 use tracker::SparqlConnection;
@@ -158,6 +160,22 @@ fn build_ui(app: &Application, uri: String) {
 
     let toolbar = ToolbarView::new();
     toolbar.add_top_bar(&header);
+
+    let close_button = Button::with_label("Close");
+    let win_clone = window.clone();
+    close_button.connect_clicked(move |_| {
+        win_clone.close();
+    });
+
+    let bottom_box = GtkBox::new(Orientation::Horizontal, 0);
+    bottom_box.set_halign(gtk::Align::End);
+    bottom_box.set_margin_start(6);
+    bottom_box.set_margin_end(6);
+    bottom_box.set_margin_top(6);
+    bottom_box.set_margin_bottom(6);
+    bottom_box.append(&close_button);
+    toolbar.add_bottom_bar(&bottom_box);
+
     toolbar.set_content(Some(&scroll));
     window.set_content(Some(&toolbar));
     window.present();
