@@ -207,6 +207,7 @@ fn build_ui(app: &Application, uri: String) {
     });
 
     let bottom_box = GtkBox::new(Orientation::Horizontal, 0);
+    bottom_box.set_spacing(6);
     bottom_box.set_halign(gtk::Align::End);
     bottom_box.set_margin_start(6);
     bottom_box.set_margin_end(6);
