@@ -16,6 +16,8 @@ const APP_ID: &str = "com.example.FileInformation";
 const TOOLTIP_MAX_CHARS: usize = 80;
 const RDF_TYPE: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
 const XSD_DATETYPE: &str = "http://www.w3.org/2001/XMLSchema#dateType";
+const RDFS_COMMENT: &str = "http://www.w3.org/2000/01/rdf-schema#comment";
+const COMMENT_TOOLTIP_MAX_CHARS: usize = 160;
 const FILEDATAOBJECT: &str = "http://tracker.api.gnome.org/ontology/v3/nfo#FileDataObject";
 
 fn main() {
@@ -295,6 +297,30 @@ fn populate_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri
                         "Copy Native Predicate",
                     );
 
+                    let lbl_key_clone = lbl_key.clone();
+                    let pred_clone = pred.clone();
+                    let gesture = gtk::GestureClick::new();
+                    gesture.set_button(1);
+                    gesture.connect_pressed(move |_, _, _, _| {
+                        if let Some(comment) = fetch_comment(&pred_clone) {
+                            let tip = ellipsize(&comment, COMMENT_TOOLTIP_MAX_CHARS);
+                            lbl_key_clone.set_tooltip_text(Some(&tip));
+                            let lbl_ref = lbl_key_clone.clone();
+                            glib::idle_add_local_once(move || {
+                                lbl_ref.trigger_tooltip_query();
+                            });
+                        }
+                    });
+                    lbl_key.add_controller(gesture);
+
+                    let lbl_key_leave = lbl_key.clone();
+                    let pred_leave = pred.clone();
+                    let motion = gtk::EventControllerMotion::new();
+                    motion.connect_leave(move |_| {
+                        lbl_key_leave.set_tooltip_text(Some(&pred_leave));
+                    });
+                    lbl_key.add_controller(motion);
+
                     grid.attach(&lbl_key, 0, row, 1, 1);
                 }
 
@@ -466,6 +492,22 @@ where
     });
 
     widget.add_controller(gesture);
+}
+
+fn fetch_comment(predicate: &str) -> Option<String> {
+    let conn =
+        SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None).ok()?;
+    let sparql = format!(
+        "SELECT ?c WHERE {{ <{pred}> <{comment}> ?c }} LIMIT 1",
+        pred = predicate,
+        comment = RDFS_COMMENT
+    );
+    let cursor = conn.query(&sparql, None::<&Cancellable>).ok()?;
+    if cursor.next(None::<&Cancellable>).unwrap_or(false) {
+        Some(cursor.string(0).unwrap_or_default().to_string())
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
