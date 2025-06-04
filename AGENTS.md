@@ -10,8 +10,7 @@ it implies that setup of the environment failed prematurely.
   not officially documented, it has been reported by other users.
 
 ### Code
-- The constant `XSD_DATETYPE` in `src/main.rs` correctly references Tracker's URI `http://www.w3.org/2001/XMLSchema#dateType`.
-  Renaming the constant or altering this URI would be incorrect.
+- The constant `XSD_DATETYPE` in `src/main.rs` correctly references Tracker's URI `http://www.w3.org/2001/XMLSchema#dateType`. Renaming the constant or altering this URI would be incorrect.
 
 ### Other
 - Before committing, run `cargo test` to ensure tests pass.

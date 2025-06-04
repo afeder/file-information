@@ -371,7 +371,8 @@ fn populate_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri
 }
 
 fn friendly_label(uri: &str) -> String {
-    let last = uri.rsplit(&['#', '/'][..]).next().unwrap_or(uri);
+    let trimmed = uri.trim_end_matches(&['#', '/'][..]);
+    let last = trimmed.rsplit(&['#', '/'][..]).next().unwrap_or(trimmed);
     let mut words = Vec::new();
     let mut cur = String::new();
     for c in last.chars() {
@@ -493,6 +494,18 @@ mod tests {
     #[test]
     fn friendly_label_basic() {
         let uri = "https://example.com/FooBarBaz";
+        assert_eq!(friendly_label(uri), "Foo Bar Baz");
+    }
+
+    #[test]
+    fn friendly_label_trailing_slash() {
+        let uri = "https://example.com/FooBarBaz/";
+        assert_eq!(friendly_label(uri), "Foo Bar Baz");
+    }
+
+    #[test]
+    fn friendly_label_trailing_hash() {
+        let uri = "https://example.com/FooBarBaz#";
         assert_eq!(friendly_label(uri), "Foo Bar Baz");
     }
 }
