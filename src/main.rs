@@ -1,21 +1,20 @@
 use adw::prelude::*;
 use adw::{Application, ApplicationWindow, HeaderBar, ToolbarView};
+use csv::WriterBuilder;
 use gdk4::Display;
 use gdk4::Rectangle;
 use gio::{ApplicationFlags, Cancellable};
 use glib::{Propagation, Variant, VariantTy};
 use gtk::WrapMode as GtkWrapMode;
 use gtk::pango;
-use gtk::{
-    CssProvider, Grid, Label, TextView, Widget, Orientation, Button, Box as GtkBox,
-};
+use gtk::{Box as GtkBox, Button, CssProvider, Grid, Label, Orientation, TextView, Widget};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
 use std::rc::Rc;
-use csv::WriterBuilder;
 use tracker::SparqlConnection;
 use tracker::prelude::SparqlCursorExtManual;
+use url::Url;
 
 const APP_ID: &str = "com.example.FileInformation";
 const TOOLTIP_MAX_CHARS: usize = 80;
@@ -562,17 +561,7 @@ fn ellipsize(s: &str, max_chars: usize) -> String {
 }
 
 fn looks_like_uri(s: &str) -> bool {
-    if let Some(pos) = s.find(':') {
-        let scheme = &s[..pos];
-        if !scheme.is_empty()
-            && scheme
-                .chars()
-                .all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '-' || c == '.')
-        {
-            return true;
-        }
-    }
-    false
+    Url::parse(s).is_ok()
 }
 
 fn add_copy_menu<W>(widget: &W, displayed: &str, native: &str, disp_label: &str, nat_label: &str)
@@ -614,15 +603,22 @@ where
         let popover = gtk::PopoverMenu::from_model(Some(&menu_model));
 
         let (parent, rect) = if let Some(root) = widget_clone.root() {
-            if let Some((rx, ry)) = widget_clone
-                .translate_coordinates(&root, x, y)
-            {
-                (root.upcast::<Widget>(), Rectangle::new(rx as i32, ry as i32, 1, 1))
+            if let Some((rx, ry)) = widget_clone.translate_coordinates(&root, x, y) {
+                (
+                    root.upcast::<Widget>(),
+                    Rectangle::new(rx as i32, ry as i32, 1, 1),
+                )
             } else {
-                (root.upcast::<Widget>(), Rectangle::new(x as i32, y as i32, 1, 1))
+                (
+                    root.upcast::<Widget>(),
+                    Rectangle::new(x as i32, y as i32, 1, 1),
+                )
             }
         } else {
-            (widget_clone.clone(), Rectangle::new(x as i32, y as i32, 1, 1))
+            (
+                widget_clone.clone(),
+                Rectangle::new(x as i32, y as i32, 1, 1),
+            )
         };
 
         popover.set_parent(&parent);
@@ -727,5 +723,10 @@ mod tests {
     #[test]
     fn looks_like_uri_invalid() {
         assert!(!looks_like_uri("not a uri"));
+    }
+
+    #[test]
+    fn looks_like_uri_date() {
+        assert!(!looks_like_uri("2024-06-04T12:34:56Z"));
     }
 }
