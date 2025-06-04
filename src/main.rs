@@ -557,6 +557,8 @@ where
 {
     let gesture = gtk::GestureClick::new();
     gesture.set_button(3);
+    gesture.set_exclusive(true);
+    gesture.set_propagation_phase(gtk::PropagationPhase::Capture);
 
     let disp_clone = displayed.to_string();
     let native_clone = native.to_string();
