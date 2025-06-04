@@ -427,6 +427,15 @@ fn populate_grid(
                     lbl_link.set_wrap(true);
                     lbl_link.set_wrap_mode(pango::WrapMode::WordChar);
                     lbl_link.set_max_width_chars(80);
+
+                    add_copy_menu(
+                        &lbl_link,
+                        &displayed_str,
+                        &native_str,
+                        "Copy Displayed Value",
+                        "Copy Native Value",
+                    );
+
                     lbl_link.upcast()
                 } else {
                     if obj.contains('\n') {
@@ -548,6 +557,8 @@ where
 {
     let gesture = gtk::GestureClick::new();
     gesture.set_button(3);
+    gesture.set_exclusive(true);
+    gesture.set_propagation_phase(gtk::PropagationPhase::Capture);
 
     let disp_clone = displayed.to_string();
     let native_clone = native.to_string();
@@ -571,10 +582,20 @@ where
 
         let popover = gtk::PopoverMenu::from_model(Some(&menu_model));
 
-        let rect = Rectangle::new(x as i32, y as i32, 1, 1);
-        popover.set_pointing_to(Some(&rect));
+        let (parent, rect) = if let Some(root) = widget_clone.root() {
+            if let Some((rx, ry)) = widget_clone
+                .translate_coordinates(&root, x, y)
+            {
+                (root.upcast::<Widget>(), Rectangle::new(rx as i32, ry as i32, 1, 1))
+            } else {
+                (root.upcast::<Widget>(), Rectangle::new(x as i32, y as i32, 1, 1))
+            }
+        } else {
+            (widget_clone.clone(), Rectangle::new(x as i32, y as i32, 1, 1))
+        };
 
-        popover.set_parent(&widget_clone);
+        popover.set_parent(&parent);
+        popover.set_pointing_to(Some(&rect));
         popover.popup();
     });
 
