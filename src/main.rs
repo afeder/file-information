@@ -197,10 +197,46 @@ fn populate_grid(
     uri_label.set_margin_start(6);
     uri_label.set_margin_top(4);
     uri_label.set_margin_bottom(4);
-    uri_label.set_selectable(true);
     uri_label.set_wrap(true);
     uri_label.set_wrap_mode(pango::WrapMode::WordChar);
     uri_label.set_max_width_chars(80);
+
+    let gesture = gtk::GestureClick::new();
+    gesture.set_button(3);
+
+    let disp_clone = uri.to_string();
+    let native_clone = uri.to_string();
+    let widget_clone: Widget = uri_label.clone().upcast();
+
+    gesture.connect_pressed(move |_gesture, _n_press, x, y| {
+        let menu_model = gio::Menu::new();
+
+        let copy_disp_item = gio::MenuItem::new(
+            Some("Copy Displayed Value"),
+            Some("win.copy-displayed-value"),
+        );
+        let disp_variant = Variant::from(disp_clone.as_str());
+        copy_disp_item.set_attribute_value("target", Some(&disp_variant));
+        menu_model.append_item(&copy_disp_item);
+
+        let copy_nat_item = gio::MenuItem::new(
+            Some("Copy Native Value"),
+            Some("win.copy-native-value"),
+        );
+        let nat_variant = Variant::from(native_clone.as_str());
+        copy_nat_item.set_attribute_value("target", Some(&nat_variant));
+        menu_model.append_item(&copy_nat_item);
+
+        let popover = gtk::PopoverMenu::from_model(Some(&menu_model));
+
+        let rect = Rectangle::new(x as i32, y as i32, 1, 1);
+        popover.set_pointing_to(Some(&rect));
+
+        popover.set_parent(&widget_clone);
+        popover.popup();
+    });
+
+    uri_label.add_controller(gesture);
 
     let tooltip_text = ellipsize(uri, TOOLTIP_MAX_CHARS);
     uri_label.set_tooltip_text(Some(&tooltip_text));
