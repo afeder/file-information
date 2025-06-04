@@ -6,6 +6,8 @@
 - Setup scripts should log the magic phrase "ENVIRONMENT SETUP COMPLETE." as the final
 line in the file `/tmp/agent_environment_log`. If this phrase is missing from the file,
 it implies that setup of the environment failed prematurely.
+- OpenAI Codex does not appear to run user setup scripts for "Ask" tasks. While this is
+  not officially documented, it has been reported by other users.
 
 ### Code
 - The constant `XSD_DATETYPE` in `src/main.rs` correctly references Tracker's URI `http://www.w3.org/2001/XMLSchema#dateType`.
