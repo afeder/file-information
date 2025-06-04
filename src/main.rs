@@ -16,8 +16,8 @@ use std::env;
 const APP_ID: &str = "com.example.FileInformation";
 const TOOLTIP_MAX_CHARS: usize = 80;
 const RDF_TYPE: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
-const FILEDATAOBJECT: &str = "http://tracker.api.gnome.org/ontology/v3/nfo#FileDataObject";
 const XSD_DATETYPE: &str = "http://www.w3.org/2001/XMLSchema#dateType";
+const FILEDATAOBJECT: &str = "http://tracker.api.gnome.org/ontology/v3/nfo#FileDataObject";
 
 fn main() {
     let mut args: Vec<String> = env::args().skip(1).collect();
@@ -334,7 +334,7 @@ fn populate_grid(
                 let displayed_str = if dtype.is_empty() {
                     obj.clone()
                 } else {
-                    friendly_display(obj, dtype)
+                    friendly_value(obj, dtype)
                 };
                 let native_str = obj.clone();
 
@@ -440,36 +440,6 @@ fn populate_grid(
     is_file_data_object
 }
 
-fn ellipsize(s: &str, max_chars: usize) -> String {
-    let mut count = 0;
-    let mut result = String::new();
-    for ch in s.chars() {
-        if count >= max_chars {
-            result.push('…');
-            break;
-        }
-        result.push(ch);
-        count += 1;
-    }
-    if count < s.chars().count() {
-        result
-    } else {
-        s.to_string()
-    }
-}
-
-fn friendly_display(obj: &str, dtype: &str) -> String {
-    if dtype == XSD_DATETYPE {
-        if let Ok(dt) = glib::DateTime::from_iso8601(obj, None)
-            .and_then(|dt| dt.to_local())
-            .and_then(|ldt| ldt.format("%F %T"))
-        {
-            return dt.to_string();
-        }
-    }
-    obj.to_string()
-}
-
 fn friendly_label(uri: &str) -> String {
     let last = uri.rsplit(&['#', '/'][..]).next().unwrap_or(uri);
     let mut words = Vec::new();
@@ -496,6 +466,36 @@ fn friendly_label(uri: &str) -> String {
         })
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn friendly_value(obj: &str, dtype: &str) -> String {
+    if dtype == XSD_DATETYPE {
+        if let Ok(dt) = glib::DateTime::from_iso8601(obj, None)
+            .and_then(|dt| dt.to_local())
+            .and_then(|ldt| ldt.format("%F %T"))
+        {
+            return dt.to_string();
+        }
+    }
+    obj.to_string()
+}
+
+fn ellipsize(s: &str, max_chars: usize) -> String {
+    let mut count = 0;
+    let mut result = String::new();
+    for ch in s.chars() {
+        if count >= max_chars {
+            result.push('…');
+            break;
+        }
+        result.push(ch);
+        count += 1;
+    }
+    if count < s.chars().count() {
+        result
+    } else {
+        s.to_string()
+    }
 }
 
 #[cfg(test)]
