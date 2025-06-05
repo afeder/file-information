@@ -1,21 +1,20 @@
 use adw::prelude::*;
 use adw::{Application, ApplicationWindow, HeaderBar, ToolbarView};
+use csv::WriterBuilder;
 use gdk4::Display;
 use gdk4::Rectangle;
 use gio::{ApplicationFlags, Cancellable};
 use glib::{Propagation, Variant, VariantTy};
 use gtk::WrapMode as GtkWrapMode;
 use gtk::pango;
-use gtk::{
-    CssProvider, Grid, Label, TextView, Widget, Orientation, Button, Box as GtkBox,
-};
+use gtk::{Box as GtkBox, Button, CssProvider, Grid, Label, Orientation, TextView, Widget};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
 use std::rc::Rc;
-use csv::WriterBuilder;
 use tracker::SparqlConnection;
 use tracker::prelude::SparqlCursorExtManual;
+use url::Url;
 
 const APP_ID: &str = "com.example.FileInformation";
 const TOOLTIP_MAX_CHARS: usize = 80;
@@ -122,6 +121,58 @@ fn build_ui(app: &Application, uri: String) {
         }
     });
     window.add_action(&copy_nat);
+
+    let win_for_uri = window.clone();
+    let open_uri_action = gio::SimpleAction::new("open-uri", Some(&VariantTy::STRING));
+    open_uri_action.connect_activate(move |_action, param| {
+        if let Some(v) = param {
+            if let Some(uri) = v.str() {
+                let report = |msg: String| {
+                    let dialog = gtk::MessageDialog::builder()
+                        .transient_for(&win_for_uri)
+                        .modal(true)
+                        .message_type(gtk::MessageType::Info)
+                        .buttons(gtk::ButtonsType::Ok)
+                        .text("Could not open URI")
+                        .secondary_text(&msg)
+                        .build();
+                    dialog.connect_response(|dlg, _| dlg.close());
+                    dialog.show();
+                };
+
+                if let Ok(url) = Url::parse(uri) {
+                    if url.scheme() == "file" {
+                        if let Ok(path) = url.to_file_path() {
+                            if let Some(p) = path.to_str() {
+                                let (mime, _) = gio::content_type_guess(Some(p), b"");
+                                if gio::AppInfo::default_for_type(&mime, false).is_none() {
+                                    report(format!(
+                                        "No application available for type \"{}\".",
+                                        mime
+                                    ));
+                                    return;
+                                }
+                            }
+                        }
+                    } else if gio::AppInfo::default_for_uri_scheme(url.scheme()).is_none() {
+                        report(format!(
+                            "No application available for scheme \"{}:\".",
+                            url.scheme()
+                        ));
+                        return;
+                    }
+                }
+
+                if let Err(err) = gio::AppInfo::launch_default_for_uri(
+                    uri,
+                    None::<&gio::AppLaunchContext>,
+                ) {
+                    report(err.to_string());
+                }
+            }
+        }
+    });
+    window.add_action(&open_uri_action);
 
     let provider = CssProvider::new();
     let css = r#"
@@ -551,6 +602,10 @@ fn ellipsize(s: &str, max_chars: usize) -> String {
     }
 }
 
+fn looks_like_uri(s: &str) -> bool {
+    Url::parse(s).is_ok()
+}
+
 fn add_copy_menu<W>(widget: &W, displayed: &str, native: &str, disp_label: &str, nat_label: &str)
 where
     W: IsA<gtk::Widget> + Clone + 'static,
@@ -580,18 +635,32 @@ where
         copy_nat_item.set_attribute_value("target", Some(&nat_variant));
         menu_model.append_item(&copy_nat_item);
 
+        if looks_like_uri(&native_clone) {
+            let open_item = gio::MenuItem::new(Some("Open Externally"), Some("win.open-uri"));
+            let uri_variant = Variant::from(native_clone.as_str());
+            open_item.set_attribute_value("target", Some(&uri_variant));
+            menu_model.append_item(&open_item);
+        }
+
         let popover = gtk::PopoverMenu::from_model(Some(&menu_model));
 
         let (parent, rect) = if let Some(root) = widget_clone.root() {
-            if let Some((rx, ry)) = widget_clone
-                .translate_coordinates(&root, x, y)
-            {
-                (root.upcast::<Widget>(), Rectangle::new(rx as i32, ry as i32, 1, 1))
+            if let Some((rx, ry)) = widget_clone.translate_coordinates(&root, x, y) {
+                (
+                    root.upcast::<Widget>(),
+                    Rectangle::new(rx as i32, ry as i32, 1, 1),
+                )
             } else {
-                (root.upcast::<Widget>(), Rectangle::new(x as i32, y as i32, 1, 1))
+                (
+                    root.upcast::<Widget>(),
+                    Rectangle::new(x as i32, y as i32, 1, 1),
+                )
             }
         } else {
-            (widget_clone.clone(), Rectangle::new(x as i32, y as i32, 1, 1))
+            (
+                widget_clone.clone(),
+                Rectangle::new(x as i32, y as i32, 1, 1),
+            )
         };
 
         popover.set_parent(&parent);
@@ -686,5 +755,20 @@ mod tests {
     fn friendly_value_unrelated_type() {
         let raw = "hello";
         assert_eq!(friendly_value(raw, "other"), raw);
+    }
+
+    #[test]
+    fn looks_like_uri_valid() {
+        assert!(looks_like_uri("https://example.com"));
+    }
+
+    #[test]
+    fn looks_like_uri_invalid() {
+        assert!(!looks_like_uri("not a uri"));
+    }
+
+    #[test]
+    fn looks_like_uri_date() {
+        assert!(!looks_like_uri("2024-06-04T12:34:56Z"));
     }
 }
