@@ -22,8 +22,10 @@ XVFB_PID=$!
 sleep 2
 export DISPLAY="$XVFB_DISPLAY"
 # Force GTK apps to use the X11 backend so they don't try to default to Wayland
-# where available instead of connecting to Xvfb.
+# where it is available instead of connecting to Xvfb.
 export GDK_BACKEND=x11
+# Suppress GTK accessibility bus warning.
+export GTK_A11Y=none
 # This may be necessary to prevent attempts to use hardware graphics.
 #export LIBGL_ALWAYS_SOFTWARE=1
 
