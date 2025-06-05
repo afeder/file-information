@@ -756,12 +756,7 @@ fn show_backlinks_window(app: &Application, parent: &ApplicationWindow, uri: Str
     populate_backlinks_grid(app, &window, &grid, &uri);
 }
 
-fn populate_backlinks_grid(
-    app: &Application,
-    window: &ApplicationWindow,
-    grid: &Grid,
-    uri: &str,
-) {
+fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri: &str) {
     while let Some(child) = grid.first_child() {
         grid.remove(&child);
     }
@@ -783,10 +778,7 @@ fn populate_backlinks_grid(
         }
     };
 
-    let sparql = format!(
-        "SELECT DISTINCT ?s ?p WHERE {{ ?s ?p <{uri}> }}",
-        uri = uri
-    );
+    let sparql = format!("SELECT DISTINCT ?s ?p WHERE {{ ?s ?p <{uri}> }}", uri = uri);
     let cursor = match conn.query(&sparql, None::<&Cancellable>) {
         Ok(c) => c,
         Err(err) => {
@@ -826,6 +818,14 @@ fn populate_backlinks_grid(
                 Propagation::Stop
             });
 
+            add_copy_menu(
+                &lbl_link,
+                &subj,
+                &subj,
+                "Copy Displayed Value",
+                "Copy Native Value",
+            );
+
             lbl_link.upcast()
         } else {
             let lbl_val = Label::new(Some(&subj));
@@ -836,13 +836,23 @@ fn populate_backlinks_grid(
             lbl_val.set_wrap(true);
             lbl_val.set_wrap_mode(pango::WrapMode::WordChar);
             lbl_val.set_max_width_chars(80);
+
+            add_copy_menu(
+                &lbl_val,
+                &subj,
+                &subj,
+                "Copy Displayed Value",
+                "Copy Native Value",
+            );
+
             lbl_val.upcast()
         };
 
         widget.set_tooltip_text(Some(&subj));
         grid.attach(&widget, 0, row, 1, 1);
 
-        let lbl_pred = Label::new(Some(&friendly_label(&pred)));
+        let pred_label = friendly_label(&pred);
+        let lbl_pred = Label::new(Some(&pred_label));
         lbl_pred.set_halign(gtk::Align::Start);
         lbl_pred.set_valign(gtk::Align::Start);
         lbl_pred.style_context().add_class("first-col");
@@ -850,6 +860,14 @@ fn populate_backlinks_grid(
         lbl_pred.set_margin_start(6);
         lbl_pred.set_margin_top(4);
         lbl_pred.set_margin_bottom(4);
+
+        add_copy_menu(
+            &lbl_pred,
+            &pred_label,
+            &pred,
+            "Copy Displayed Predicate",
+            "Copy Native Predicate",
+        );
 
         grid.attach(&lbl_pred, 1, row, 1, 1);
         row += 1;
