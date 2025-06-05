@@ -997,4 +997,25 @@ mod tests {
     fn looks_like_uri_date() {
         assert!(!looks_like_uri("2024-06-04T12:34:56Z"));
     }
+
+    #[test]
+    fn ellipsize_zero_limit() {
+        assert_eq!(ellipsize("hello", 0), "…");
+    }
+
+    #[test]
+    fn ellipsize_empty_string() {
+        assert_eq!(ellipsize("", 5), "");
+    }
+
+    #[test]
+    fn friendly_label_domain_only() {
+        let uri = "https://example.com";
+        assert_eq!(friendly_label(uri), "Example.com");
+    }
+
+    #[test]
+    fn looks_like_uri_file_scheme() {
+        assert!(looks_like_uri("file:///tmp/test"));
+    }
 }
