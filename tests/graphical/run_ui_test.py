@@ -24,7 +24,8 @@ def wait_for_window(title, timeout=10):
 
 def main():
     subprocess.check_call(["cargo", "build"])
-    fd, path = tempfile.mkstemp()
+    home_dir = os.path.expanduser("~")
+    fd, path = tempfile.mkstemp(dir=home_dir)
     os.close(fd)
 
     env = os.environ.copy()
