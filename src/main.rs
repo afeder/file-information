@@ -410,7 +410,8 @@ fn populate_grid(
 
                 let widget: gtk::Widget = if dtype.is_empty() {
                     let lbl_link = Label::new(None);
-                    lbl_link.set_markup(&format!("<a href=\"{0}\">{0}</a>", obj));
+                    let escaped = glib::markup_escape_text(obj);
+                    lbl_link.set_markup(&format!("<a href=\"{0}\">{0}</a>", escaped));
                     lbl_link.set_halign(gtk::Align::Start);
                     lbl_link.set_margin_start(6);
                     lbl_link.set_margin_top(4);
@@ -809,7 +810,8 @@ fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, grid: 
 
         let widget: Widget = if looks_like_uri(&subj) {
             let lbl_link = Label::new(None);
-            lbl_link.set_markup(&format!("<a href=\"{0}\">{0}</a>", subj));
+            let escaped = glib::markup_escape_text(&subj);
+            lbl_link.set_markup(&format!("<a href=\"{0}\">{0}</a>", escaped));
             lbl_link.set_halign(gtk::Align::Start);
             lbl_link.set_margin_start(6);
             lbl_link.set_margin_top(4);
