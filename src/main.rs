@@ -96,64 +96,7 @@ fn build_ui(app: &Application, uri: String) {
         .title("File Information")
         .build();
 
-    let copy_disp = gio::SimpleAction::new("copy-displayed-value", Some(&VariantTy::STRING));
-    copy_disp.connect_activate(move |_action, param| {
-        if let Some(v) = param {
-            if let Some(text) = v.str() {
-                if let Some(display) = Display::default() {
-                    let clipboard = display.clipboard();
-                    clipboard.set_text(text);
-                }
-            }
-        }
-    });
-    window.add_action(&copy_disp);
-
-    let copy_nat = gio::SimpleAction::new("copy-native-value", Some(&VariantTy::STRING));
-    copy_nat.connect_activate(move |_action, param| {
-        if let Some(v) = param {
-            if let Some(text) = v.str() {
-                if let Some(display) = Display::default() {
-                    let clipboard = display.clipboard();
-                    clipboard.set_text(text);
-                }
-            }
-        }
-    });
-    window.add_action(&copy_nat);
-
-    let win_for_uri = window.clone();
-    let open_uri_action = gio::SimpleAction::new("open-uri", Some(&VariantTy::STRING));
-    open_uri_action.connect_activate(move |_action, param| {
-        if let Some(v) = param {
-            if let Some(uri) = v.str() {
-                let report = |msg: String| {
-                    let dialog = gtk::MessageDialog::builder()
-                        .transient_for(&win_for_uri)
-                        .modal(true)
-                        .message_type(gtk::MessageType::Info)
-                        .buttons(gtk::ButtonsType::Ok)
-                        .text("Could not open URI")
-                        .secondary_text(&msg)
-                        .build();
-                    dialog.connect_response(|dlg, _| dlg.close());
-                    dialog.show();
-                };
-
-                if let Err(msg) = uri_has_handler(uri) {
-                    report(msg);
-                    return;
-                }
-
-                if let Err(err) =
-                    gio::AppInfo::launch_default_for_uri(uri, None::<&gio::AppLaunchContext>)
-                {
-                    report(err.to_string());
-                }
-            }
-        }
-    });
-    window.add_action(&open_uri_action);
+    add_common_actions(&window);
 
     let provider = CssProvider::new();
     let css = r#"
@@ -631,6 +574,67 @@ fn uri_has_handler(uri: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn add_common_actions(window: &ApplicationWindow) {
+    let copy_disp = gio::SimpleAction::new("copy-displayed-value", Some(&VariantTy::STRING));
+    copy_disp.connect_activate(move |_action, param| {
+        if let Some(v) = param {
+            if let Some(text) = v.str() {
+                if let Some(display) = Display::default() {
+                    let clipboard = display.clipboard();
+                    clipboard.set_text(text);
+                }
+            }
+        }
+    });
+    window.add_action(&copy_disp);
+
+    let copy_nat = gio::SimpleAction::new("copy-native-value", Some(&VariantTy::STRING));
+    copy_nat.connect_activate(move |_action, param| {
+        if let Some(v) = param {
+            if let Some(text) = v.str() {
+                if let Some(display) = Display::default() {
+                    let clipboard = display.clipboard();
+                    clipboard.set_text(text);
+                }
+            }
+        }
+    });
+    window.add_action(&copy_nat);
+
+    let win_for_uri = window.clone();
+    let open_uri_action = gio::SimpleAction::new("open-uri", Some(&VariantTy::STRING));
+    open_uri_action.connect_activate(move |_action, param| {
+        if let Some(v) = param {
+            if let Some(uri) = v.str() {
+                let report = |msg: String| {
+                    let dialog = gtk::MessageDialog::builder()
+                        .transient_for(&win_for_uri)
+                        .modal(true)
+                        .message_type(gtk::MessageType::Info)
+                        .buttons(gtk::ButtonsType::Ok)
+                        .text("Could not open URI")
+                        .secondary_text(&msg)
+                        .build();
+                    dialog.connect_response(|dlg, _| dlg.close());
+                    dialog.show();
+                };
+
+                if let Err(msg) = uri_has_handler(uri) {
+                    report(msg);
+                    return;
+                }
+
+                if let Err(err) =
+                    gio::AppInfo::launch_default_for_uri(uri, None::<&gio::AppLaunchContext>)
+                {
+                    report(err.to_string());
+                }
+            }
+        }
+    });
+    window.add_action(&open_uri_action);
+}
+
 fn add_copy_menu<W>(widget: &W, displayed: &str, native: &str, disp_label: &str, nat_label: &str)
 where
     W: IsA<gtk::Widget> + Clone + 'static,
@@ -704,6 +708,8 @@ fn show_backlinks_window(app: &Application, parent: &ApplicationWindow, uri: Str
         .default_height(400)
         .title("Backlinks")
         .build();
+
+    add_common_actions(&window);
 
     let header = HeaderBar::new();
     header.set_show_end_title_buttons(true);
