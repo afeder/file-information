@@ -139,10 +139,22 @@ fn build_ui(app: &Application, uri: String) {
                     dialog.connect_response(|dlg, _| dlg.close());
                     dialog.show();
                 };
+
                 if let Ok(url) = Url::parse(uri) {
-                    if url.scheme() != "file"
-                        && gio::AppInfo::default_for_uri_scheme(url.scheme()).is_none()
-                    {
+                    if url.scheme() == "file" {
+                        if let Ok(path) = url.to_file_path() {
+                            if let Some(p) = path.to_str() {
+                                let (mime, _) = gio::content_type_guess(Some(p), b"");
+                                if gio::AppInfo::default_for_type(&mime, false).is_none() {
+                                    report(format!(
+                                        "No application available for type \"{}\".",
+                                        mime
+                                    ));
+                                    return;
+                                }
+                            }
+                        }
+                    } else if gio::AppInfo::default_for_uri_scheme(url.scheme()).is_none() {
                         report(format!(
                             "No application available for scheme \"{}:\".",
                             url.scheme()
@@ -150,6 +162,7 @@ fn build_ui(app: &Application, uri: String) {
                         return;
                     }
                 }
+
                 if let Err(err) = gio::AppInfo::launch_default_for_uri(
                     uri,
                     None::<&gio::AppLaunchContext>,
