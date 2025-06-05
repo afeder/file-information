@@ -809,17 +809,6 @@ fn populate_backlinks_grid(
         let subj = cursor.string(0).unwrap_or_default().to_string();
         let pred = cursor.string(1).unwrap_or_default().to_string();
 
-        let lbl_pred = Label::new(Some(&friendly_label(&pred)));
-        lbl_pred.set_halign(gtk::Align::Start);
-        lbl_pred.set_valign(gtk::Align::Start);
-        lbl_pred.style_context().add_class("first-col");
-        lbl_pred.set_tooltip_text(Some(&pred));
-        lbl_pred.set_margin_start(6);
-        lbl_pred.set_margin_top(4);
-        lbl_pred.set_margin_bottom(4);
-
-        grid.attach(&lbl_pred, 0, row, 1, 1);
-
         let widget: Widget = if looks_like_uri(&subj) {
             let lbl_link = Label::new(None);
             lbl_link.set_markup(&format!("<a href=\"{0}\">{0}</a>", subj));
@@ -851,7 +840,18 @@ fn populate_backlinks_grid(
         };
 
         widget.set_tooltip_text(Some(&subj));
-        grid.attach(&widget, 1, row, 1, 1);
+        grid.attach(&widget, 0, row, 1, 1);
+
+        let lbl_pred = Label::new(Some(&friendly_label(&pred)));
+        lbl_pred.set_halign(gtk::Align::Start);
+        lbl_pred.set_valign(gtk::Align::Start);
+        lbl_pred.style_context().add_class("first-col");
+        lbl_pred.set_tooltip_text(Some(&pred));
+        lbl_pred.set_margin_start(6);
+        lbl_pred.set_margin_top(4);
+        lbl_pred.set_margin_bottom(4);
+
+        grid.attach(&lbl_pred, 1, row, 1, 1);
         row += 1;
     }
 }
