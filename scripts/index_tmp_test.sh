@@ -43,5 +43,5 @@ tracker3 index --add /tmp/test --recursive
 tracker3 daemon -s
 
 # Wait for indexing to complete and display info
-tracker3 status --wait
+tracker3 status
 tracker3 info /tmp/test/yourfile.txt
