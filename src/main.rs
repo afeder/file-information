@@ -261,11 +261,11 @@ fn build_ui(app: &Application, uri: String) {
     bottom_box.set_margin_end(6);
     bottom_box.set_margin_top(6);
     bottom_box.set_margin_bottom(6);
-    bottom_box.append(&close_button);
+    bottom_box.append(&copy_button);
     if uri_has_handler(&uri).is_ok() {
         bottom_box.append(&open_button);
     }
-    bottom_box.append(&copy_button);
+    bottom_box.append(&close_button);
     toolbar.add_bottom_bar(&bottom_box);
 
     toolbar.set_content(Some(&scroll));
