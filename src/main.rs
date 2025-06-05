@@ -225,19 +225,27 @@ fn build_ui(app: &Application, uri: String) {
     window.present();
 
     let app_clone = app.clone();
+    let window_clone = window.clone();
+    let grid_clone = grid.clone();
+    let header_clone = header_label.clone();
+    let data_clone = table_data.clone();
+    let uri_clone = uri.clone();
 
-    let (is_file_data_object, rows) = populate_grid(&app_clone, &window, &grid, &uri);
-    table_data.borrow_mut().clear();
-    table_data.borrow_mut().extend(rows);
+    glib::MainContext::default().spawn_local(async move {
+        let (is_file_data_object, rows) =
+            populate_grid(&app_clone, &window_clone, &grid_clone, &uri_clone).await;
+        data_clone.borrow_mut().clear();
+        data_clone.borrow_mut().extend(rows);
 
-    header_label.set_text(if is_file_data_object {
-        "File Information"
-    } else {
-        "Node Information"
+        header_clone.set_text(if is_file_data_object {
+            "File Information"
+        } else {
+            "Node Information"
+        });
     });
 }
 
-fn populate_grid(
+async fn populate_grid(
     app: &Application,
     window: &ApplicationWindow,
     grid: &Grid,
@@ -311,7 +319,7 @@ fn populate_grid(
     "#,
         uri = uri
     );
-    let cursor = match conn.query(&sparql, None::<&Cancellable>) {
+    let cursor = match conn.query_future(&sparql).await {
         Ok(c) => c,
         Err(err) => {
             let dialog = gtk::MessageDialog::builder()
@@ -333,7 +341,7 @@ fn populate_grid(
 
     let mut is_file_data_object = false;
 
-    while cursor.next(None::<&Cancellable>).unwrap_or(false) {
+    while cursor.next_future().await.unwrap_or(false) {
         let pred = cursor.string(0).unwrap_or_default().to_string();
         let obj = cursor.string(1).unwrap_or_default().to_string();
         let dtype = cursor.string(2).unwrap_or_default().to_string();
@@ -760,10 +768,17 @@ fn show_backlinks_window(app: &Application, parent: &ApplicationWindow, uri: Str
     window.set_content(Some(&toolbar));
     window.present();
 
-    populate_backlinks_grid(app, &window, &grid, &uri);
+    let app_clone = app.clone();
+    let window_clone = window.clone();
+    let grid_clone = grid.clone();
+    let uri_clone = uri.clone();
+
+    glib::MainContext::default().spawn_local(async move {
+        populate_backlinks_grid(&app_clone, &window_clone, &grid_clone, &uri_clone).await;
+    });
 }
 
-fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri: &str) {
+async fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri: &str) {
     while let Some(child) = grid.first_child() {
         grid.remove(&child);
     }
@@ -786,7 +801,7 @@ fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, grid: 
     };
 
     let sparql = format!("SELECT DISTINCT ?s ?p WHERE {{ ?s ?p <{uri}> }}", uri = uri);
-    let cursor = match conn.query(&sparql, None::<&Cancellable>) {
+    let cursor = match conn.query_future(&sparql).await {
         Ok(c) => c,
         Err(err) => {
             let dialog = gtk::MessageDialog::builder()
@@ -804,7 +819,7 @@ fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, grid: 
     };
 
     let mut row = 0;
-    while cursor.next(None::<&Cancellable>).unwrap_or(false) {
+    while cursor.next_future().await.unwrap_or(false) {
         let subj = cursor.string(0).unwrap_or_default().to_string();
         let pred = cursor.string(1).unwrap_or_default().to_string();
 
