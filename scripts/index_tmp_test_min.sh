@@ -8,6 +8,12 @@ if [ ! -f "$TEST_DIR/yourfile.txt" ]; then
     echo "This is a test" > "$TEST_DIR/yourfile.txt"
 fi
 
+# Start a D-Bus session if needed
+if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+    addr=$(dbus-daemon --session --fork --print-address)
+    export DBUS_SESSION_BUS_ADDRESS="$addr"
+fi
+
 # Add directory to index and start Tracker3 daemon
 tracker3 index --add --recursive "$TEST_DIR"
 tracker3 daemon -s
