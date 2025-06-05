@@ -140,33 +140,14 @@ fn build_ui(app: &Application, uri: String) {
                     dialog.show();
                 };
 
-                if let Ok(url) = Url::parse(uri) {
-                    if url.scheme() == "file" {
-                        if let Ok(path) = url.to_file_path() {
-                            if let Some(p) = path.to_str() {
-                                let (mime, _) = gio::content_type_guess(Some(p), b"");
-                                if gio::AppInfo::default_for_type(&mime, false).is_none() {
-                                    report(format!(
-                                        "No application available for type \"{}\".",
-                                        mime
-                                    ));
-                                    return;
-                                }
-                            }
-                        }
-                    } else if gio::AppInfo::default_for_uri_scheme(url.scheme()).is_none() {
-                        report(format!(
-                            "No application available for scheme \"{}:\".",
-                            url.scheme()
-                        ));
-                        return;
-                    }
+                if let Err(msg) = uri_has_handler(uri) {
+                    report(msg);
+                    return;
                 }
 
-                if let Err(err) = gio::AppInfo::launch_default_for_uri(
-                    uri,
-                    None::<&gio::AppLaunchContext>,
-                ) {
+                if let Err(err) =
+                    gio::AppInfo::launch_default_for_uri(uri, None::<&gio::AppLaunchContext>)
+                {
                     report(err.to_string());
                 }
             }
@@ -606,6 +587,27 @@ fn looks_like_uri(s: &str) -> bool {
     Url::parse(s).is_ok()
 }
 
+fn uri_has_handler(uri: &str) -> Result<(), String> {
+    if let Ok(url) = Url::parse(uri) {
+        if url.scheme() == "file" {
+            if let Ok(path) = url.to_file_path() {
+                if let Some(p) = path.to_str() {
+                    let (mime, _) = gio::content_type_guess(Some(p), b"");
+                    if gio::AppInfo::default_for_type(&mime, false).is_none() {
+                        return Err(format!("No application available for type \"{}\".", mime));
+                    }
+                }
+            }
+        } else if gio::AppInfo::default_for_uri_scheme(url.scheme()).is_none() {
+            return Err(format!(
+                "No application available for scheme \"{}:\".",
+                url.scheme()
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn add_copy_menu<W>(widget: &W, displayed: &str, native: &str, disp_label: &str, nat_label: &str)
 where
     W: IsA<gtk::Widget> + Clone + 'static,
@@ -635,7 +637,7 @@ where
         copy_nat_item.set_attribute_value("target", Some(&nat_variant));
         menu_model.append_item(&copy_nat_item);
 
-        if looks_like_uri(&native_clone) {
+        if looks_like_uri(&native_clone) && uri_has_handler(&native_clone).is_ok() {
             let open_item = gio::MenuItem::new(Some("Open Externally"), Some("win.open-uri"));
             let uri_variant = Variant::from(native_clone.as_str());
             open_item.set_attribute_value("target", Some(&uri_variant));
