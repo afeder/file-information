@@ -18,6 +18,9 @@ XVFB_PID=$!
 
 sleep 2
 export DISPLAY="$XVFB_DISPLAY"
+# Force GTK apps to use the X11 backend so they don't try to default to Wayland
+# where available instead of connecting to Xvfb.
+export GDK_BACKEND=x11
 
 ./target/release/file-information README.md &
 APP_PID=$!
