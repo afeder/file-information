@@ -96,64 +96,7 @@ fn build_ui(app: &Application, uri: String) {
         .title("File Information")
         .build();
 
-    let copy_disp = gio::SimpleAction::new("copy-displayed-value", Some(&VariantTy::STRING));
-    copy_disp.connect_activate(move |_action, param| {
-        if let Some(v) = param {
-            if let Some(text) = v.str() {
-                if let Some(display) = Display::default() {
-                    let clipboard = display.clipboard();
-                    clipboard.set_text(text);
-                }
-            }
-        }
-    });
-    window.add_action(&copy_disp);
-
-    let copy_nat = gio::SimpleAction::new("copy-native-value", Some(&VariantTy::STRING));
-    copy_nat.connect_activate(move |_action, param| {
-        if let Some(v) = param {
-            if let Some(text) = v.str() {
-                if let Some(display) = Display::default() {
-                    let clipboard = display.clipboard();
-                    clipboard.set_text(text);
-                }
-            }
-        }
-    });
-    window.add_action(&copy_nat);
-
-    let win_for_uri = window.clone();
-    let open_uri_action = gio::SimpleAction::new("open-uri", Some(&VariantTy::STRING));
-    open_uri_action.connect_activate(move |_action, param| {
-        if let Some(v) = param {
-            if let Some(uri) = v.str() {
-                let report = |msg: String| {
-                    let dialog = gtk::MessageDialog::builder()
-                        .transient_for(&win_for_uri)
-                        .modal(true)
-                        .message_type(gtk::MessageType::Info)
-                        .buttons(gtk::ButtonsType::Ok)
-                        .text("Could not open URI")
-                        .secondary_text(&msg)
-                        .build();
-                    dialog.connect_response(|dlg, _| dlg.close());
-                    dialog.show();
-                };
-
-                if let Err(msg) = uri_has_handler(uri) {
-                    report(msg);
-                    return;
-                }
-
-                if let Err(err) =
-                    gio::AppInfo::launch_default_for_uri(uri, None::<&gio::AppLaunchContext>)
-                {
-                    report(err.to_string());
-                }
-            }
-        }
-    });
-    window.add_action(&open_uri_action);
+    add_common_actions(&window);
 
     let provider = CssProvider::new();
     let css = r#"
@@ -254,6 +197,14 @@ fn build_ui(app: &Application, uri: String) {
         );
     });
 
+    let backlinks_button = Button::with_label("Backlinks");
+    let app_clone = app.clone();
+    let win_parent = window.clone();
+    let uri_bl = uri.clone();
+    backlinks_button.connect_clicked(move |_| {
+        show_backlinks_window(&app_clone, &win_parent, uri_bl.clone());
+    });
+
     let bottom_box = GtkBox::new(Orientation::Horizontal, 0);
     bottom_box.set_spacing(5);
     bottom_box.set_halign(gtk::Align::End);
@@ -261,6 +212,7 @@ fn build_ui(app: &Application, uri: String) {
     bottom_box.set_margin_end(6);
     bottom_box.set_margin_top(6);
     bottom_box.set_margin_bottom(6);
+    bottom_box.append(&backlinks_button);
     bottom_box.append(&copy_button);
     if uri_has_handler(&uri).is_ok() {
         bottom_box.append(&open_button);
@@ -622,6 +574,67 @@ fn uri_has_handler(uri: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn add_common_actions(window: &ApplicationWindow) {
+    let copy_disp = gio::SimpleAction::new("copy-displayed-value", Some(&VariantTy::STRING));
+    copy_disp.connect_activate(move |_action, param| {
+        if let Some(v) = param {
+            if let Some(text) = v.str() {
+                if let Some(display) = Display::default() {
+                    let clipboard = display.clipboard();
+                    clipboard.set_text(text);
+                }
+            }
+        }
+    });
+    window.add_action(&copy_disp);
+
+    let copy_nat = gio::SimpleAction::new("copy-native-value", Some(&VariantTy::STRING));
+    copy_nat.connect_activate(move |_action, param| {
+        if let Some(v) = param {
+            if let Some(text) = v.str() {
+                if let Some(display) = Display::default() {
+                    let clipboard = display.clipboard();
+                    clipboard.set_text(text);
+                }
+            }
+        }
+    });
+    window.add_action(&copy_nat);
+
+    let win_for_uri = window.clone();
+    let open_uri_action = gio::SimpleAction::new("open-uri", Some(&VariantTy::STRING));
+    open_uri_action.connect_activate(move |_action, param| {
+        if let Some(v) = param {
+            if let Some(uri) = v.str() {
+                let report = |msg: String| {
+                    let dialog = gtk::MessageDialog::builder()
+                        .transient_for(&win_for_uri)
+                        .modal(true)
+                        .message_type(gtk::MessageType::Info)
+                        .buttons(gtk::ButtonsType::Ok)
+                        .text("Could not open URI")
+                        .secondary_text(&msg)
+                        .build();
+                    dialog.connect_response(|dlg, _| dlg.close());
+                    dialog.show();
+                };
+
+                if let Err(msg) = uri_has_handler(uri) {
+                    report(msg);
+                    return;
+                }
+
+                if let Err(err) =
+                    gio::AppInfo::launch_default_for_uri(uri, None::<&gio::AppLaunchContext>)
+                {
+                    report(err.to_string());
+                }
+            }
+        }
+    });
+    window.add_action(&open_uri_action);
+}
+
 fn add_copy_menu<W>(widget: &W, displayed: &str, native: &str, disp_label: &str, nat_label: &str)
 where
     W: IsA<gtk::Widget> + Clone + 'static,
@@ -685,6 +698,186 @@ where
     });
 
     widget.add_controller(gesture);
+}
+
+fn show_backlinks_window(app: &Application, parent: &ApplicationWindow, uri: String) {
+    let window = ApplicationWindow::builder()
+        .application(app)
+        .transient_for(parent)
+        .default_width(590)
+        .default_height(400)
+        .title("Backlinks")
+        .build();
+
+    add_common_actions(&window);
+
+    let header = HeaderBar::new();
+    header.set_show_end_title_buttons(true);
+    let header_label = Label::new(Some("Backlinks"));
+    header.set_title_widget(Some(&header_label));
+
+    let grid = Grid::builder()
+        .column_homogeneous(false)
+        .hexpand(true)
+        .vexpand(true)
+        .halign(gtk::Align::Fill)
+        .valign(gtk::Align::Fill)
+        .build();
+    grid.set_widget_name("data-grid");
+
+    let viewport = gtk::Viewport::builder()
+        .scroll_to_focus(false)
+        .child(&grid)
+        .build();
+
+    let scroll = gtk::ScrolledWindow::builder()
+        .min_content_width(590)
+        .min_content_height(400)
+        .child(&viewport)
+        .build();
+
+    let toolbar = ToolbarView::new();
+    toolbar.add_top_bar(&header);
+
+    let close_button = Button::with_label("Close");
+    let win_clone = window.clone();
+    close_button.connect_clicked(move |_| {
+        win_clone.close();
+    });
+
+    let bottom_box = GtkBox::new(Orientation::Horizontal, 0);
+    bottom_box.set_spacing(5);
+    bottom_box.set_halign(gtk::Align::End);
+    bottom_box.set_margin_start(6);
+    bottom_box.set_margin_end(6);
+    bottom_box.set_margin_top(6);
+    bottom_box.set_margin_bottom(6);
+    bottom_box.append(&close_button);
+    toolbar.add_bottom_bar(&bottom_box);
+
+    toolbar.set_content(Some(&scroll));
+    window.set_content(Some(&toolbar));
+    window.present();
+
+    populate_backlinks_grid(app, &window, &grid, &uri);
+}
+
+fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri: &str) {
+    while let Some(child) = grid.first_child() {
+        grid.remove(&child);
+    }
+
+    let conn = match SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None) {
+        Ok(c) => c,
+        Err(err) => {
+            let dialog = gtk::MessageDialog::builder()
+                .transient_for(window)
+                .modal(true)
+                .message_type(gtk::MessageType::Error)
+                .text("Failed to connect to Tracker")
+                .secondary_text(&format!("{err}"))
+                .buttons(gtk::ButtonsType::Ok)
+                .build();
+            dialog.connect_response(|dlg, _| dlg.close());
+            dialog.show();
+            return;
+        }
+    };
+
+    let sparql = format!("SELECT DISTINCT ?s ?p WHERE {{ ?s ?p <{uri}> }}", uri = uri);
+    let cursor = match conn.query(&sparql, None::<&Cancellable>) {
+        Ok(c) => c,
+        Err(err) => {
+            let dialog = gtk::MessageDialog::builder()
+                .transient_for(window)
+                .modal(true)
+                .message_type(gtk::MessageType::Error)
+                .text("SPARQL query error")
+                .secondary_text(&format!("{err}"))
+                .buttons(gtk::ButtonsType::Ok)
+                .build();
+            dialog.connect_response(|dlg, _| dlg.close());
+            dialog.show();
+            return;
+        }
+    };
+
+    let mut row = 0;
+    while cursor.next(None::<&Cancellable>).unwrap_or(false) {
+        let subj = cursor.string(0).unwrap_or_default().to_string();
+        let pred = cursor.string(1).unwrap_or_default().to_string();
+
+        let widget: Widget = if looks_like_uri(&subj) {
+            let lbl_link = Label::new(None);
+            lbl_link.set_markup(&format!("<a href=\"{0}\">{0}</a>", subj));
+            lbl_link.set_halign(gtk::Align::Start);
+            lbl_link.set_margin_start(6);
+            lbl_link.set_margin_top(4);
+            lbl_link.set_margin_bottom(4);
+            lbl_link.set_wrap(true);
+            lbl_link.set_wrap_mode(pango::WrapMode::WordChar);
+            lbl_link.set_max_width_chars(80);
+
+            let app_clone = app.clone();
+            lbl_link.connect_activate_link(move |_lbl, uri| {
+                build_ui(&app_clone, uri.to_string());
+                Propagation::Stop
+            });
+
+            add_copy_menu(
+                &lbl_link,
+                &subj,
+                &subj,
+                "Copy Displayed Value",
+                "Copy Native Value",
+            );
+
+            lbl_link.upcast()
+        } else {
+            let lbl_val = Label::new(Some(&subj));
+            lbl_val.set_halign(gtk::Align::Start);
+            lbl_val.set_margin_start(6);
+            lbl_val.set_margin_top(4);
+            lbl_val.set_margin_bottom(4);
+            lbl_val.set_wrap(true);
+            lbl_val.set_wrap_mode(pango::WrapMode::WordChar);
+            lbl_val.set_max_width_chars(80);
+
+            add_copy_menu(
+                &lbl_val,
+                &subj,
+                &subj,
+                "Copy Displayed Value",
+                "Copy Native Value",
+            );
+
+            lbl_val.upcast()
+        };
+
+        widget.set_tooltip_text(Some(&subj));
+        grid.attach(&widget, 0, row, 1, 1);
+
+        let pred_label = friendly_label(&pred);
+        let lbl_pred = Label::new(Some(&pred_label));
+        lbl_pred.set_halign(gtk::Align::Start);
+        lbl_pred.set_valign(gtk::Align::Start);
+        lbl_pred.style_context().add_class("first-col");
+        lbl_pred.set_tooltip_text(Some(&pred));
+        lbl_pred.set_margin_start(6);
+        lbl_pred.set_margin_top(4);
+        lbl_pred.set_margin_bottom(4);
+
+        add_copy_menu(
+            &lbl_pred,
+            &pred_label,
+            &pred,
+            "Copy Displayed Predicate",
+            "Copy Native Predicate",
+        );
+
+        grid.attach(&lbl_pred, 1, row, 1, 1);
+        row += 1;
+    }
 }
 
 fn fetch_comment(predicate: &str) -> Option<String> {
