@@ -243,6 +243,17 @@ fn build_ui(app: &Application, uri: String) {
         }
     });
 
+    let open_button = Button::with_label("Open");
+    let win_for_action = window.clone();
+    let uri_clone = uri.clone();
+    open_button.connect_clicked(move |_| {
+        gio::prelude::ActionGroupExt::activate_action(
+            &win_for_action,
+            "open-uri",
+            Some(&Variant::from(uri_clone.as_str())),
+        );
+    });
+
     let bottom_box = GtkBox::new(Orientation::Horizontal, 0);
     bottom_box.set_spacing(5);
     bottom_box.set_halign(gtk::Align::End);
@@ -251,6 +262,9 @@ fn build_ui(app: &Application, uri: String) {
     bottom_box.set_margin_top(6);
     bottom_box.set_margin_bottom(6);
     bottom_box.append(&copy_button);
+    if uri_has_handler(&uri).is_ok() {
+        bottom_box.append(&open_button);
+    }
     bottom_box.append(&close_button);
     toolbar.add_bottom_bar(&bottom_box);
 
