@@ -140,8 +140,13 @@ fn build_ui(app: &Application, uri: String) {
                     dialog.show();
                 };
                 if let Ok(url) = Url::parse(uri) {
-                    if gio::AppInfo::default_for_uri_scheme(url.scheme()).is_none() {
-                        report(format!("No application available for scheme \"{}:\".", url.scheme()));
+                    if url.scheme() != "file"
+                        && gio::AppInfo::default_for_uri_scheme(url.scheme()).is_none()
+                    {
+                        report(format!(
+                            "No application available for scheme \"{}:\".",
+                            url.scheme()
+                        ));
                         return;
                     }
                 }
