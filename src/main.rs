@@ -600,7 +600,7 @@ fn uri_has_handler(uri: &str) -> Result<(), String> {
             }
         } else if gio::AppInfo::default_for_uri_scheme(url.scheme()).is_none() {
             return Err(format!(
-                "No application available for scheme \"{}:\".",
+                "No application available for scheme \"{}\".",
                 url.scheme()
             ));
         }
