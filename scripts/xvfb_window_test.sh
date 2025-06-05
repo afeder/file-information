@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# Note that it may be necessary to install `dbus-x11` to avoid warnings about
+# the session bus.
+
 XVFB_DISPLAY=:99
 
 cleanup() {
@@ -19,8 +22,12 @@ XVFB_PID=$!
 sleep 2
 export DISPLAY="$XVFB_DISPLAY"
 # Force GTK apps to use the X11 backend so they don't try to default to Wayland
-# where available instead of connecting to Xvfb.
+# where it is available instead of connecting to Xvfb.
 export GDK_BACKEND=x11
+# Suppress GTK accessibility bus warning.
+export GTK_A11Y=none
+# This may be necessary to prevent attempts to use hardware graphics.
+#export LIBGL_ALWAYS_SOFTWARE=1
 
 ./target/release/file-information README.md &
 APP_PID=$!
