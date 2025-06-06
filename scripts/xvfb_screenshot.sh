@@ -31,10 +31,10 @@ if [ ! -f "$TEST_FILE" ]; then
     echo "This is a Tracker test file" > "$TEST_FILE"
 fi
 
+echo "Launching Xvfb on display $XVFB_DISPLAY and piping output to $XVFB_LOG..."
 Xvfb "$XVFB_DISPLAY" -screen 0 1024x768x24 >"$XVFB_LOG" 2>&1 &
 XVFB_PID=$!
 
-sleep 2
 export DISPLAY="$XVFB_DISPLAY"
 export GDK_BACKEND=x11
 export GTK_A11Y=none
@@ -46,6 +46,7 @@ if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
     export DBUS_SESSION_BUS_ADDRESS="$addr"
 fi
 
+echo "Initiating Tracker indexing of $TEST_DIR..."
 # Let Tracker index the test directory.
 tracker3 daemon -s >/dev/null
 tracker3 index --add "$TEST_DIR" >/dev/null
@@ -58,7 +59,7 @@ done
 
 # Query Tracker for metadata about the file to be shown in the application
 echo "Tracker metadata for $TEST_FILE:" >&2
-tracker3 info "$TEST_FILE" || true
+(tracker3 info "$TEST_FILE" || true) | head -n 5
 
 "$APP_PATH" --debug "$TEST_FILE" &
 APP_PID=$!
@@ -71,6 +72,7 @@ for i in {1..10}; do
 done
 
 # Allow the application time to render its UI fully before taking the screenshot
+echo "Waiting for 2 seconds to allow the application time to render its UI..."
 sleep 2
 
 window_id=$(xdotool search --name "File Information" | head -n 1)
