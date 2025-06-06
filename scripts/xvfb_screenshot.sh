@@ -3,7 +3,7 @@ set -euo pipefail
 
 XVFB_DISPLAY=:99
 APP_PATH="target/release/file-information"
-SCREENSHOT="screenshot.png"
+SCREENSHOT="/tmp/file_information_test_screenshot.png"
 TEST_DIR="$HOME/tmp"
 TEST_FILE="$TEST_DIR/testfile.txt"
 
@@ -13,6 +13,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
+echo "Building the application (may take some time)..."
 if [ ! -x "$APP_PATH" ]; then
     cargo build --release
 fi
@@ -32,12 +33,13 @@ export GDK_BACKEND=x11
 export GTK_A11Y=none
 export LIBGL_ALWAYS_SOFTWARE=1
 
-# Start a D-Bus session if needed and allow Tracker to index this directory
+# Start a D-Bus session if needed.
 if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
     addr=$(dbus-daemon --session --fork --print-address)
     export DBUS_SESSION_BUS_ADDRESS="$addr"
 fi
 
+#  Let Tracker to index the test directory.
 tracker3 daemon -s >/dev/null
 tracker3 index --add "$TEST_DIR" >/dev/null
 
