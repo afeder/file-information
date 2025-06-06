@@ -45,7 +45,7 @@ if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
     export DBUS_SESSION_BUS_ADDRESS="$addr"
 fi
 
-#  Let Tracker to index the test directory.
+# Let Tracker index the test directory.
 tracker3 daemon -s >/dev/null
 tracker3 index --add "$TEST_DIR" >/dev/null
 
