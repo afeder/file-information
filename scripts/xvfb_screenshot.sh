@@ -68,19 +68,21 @@ fi
 echo "Tracker metadata for $TEST_FILE:" >&2
 (tracker3 info "$TEST_FILE" || true) | head -n 5
 
+
 "$APP_PATH" --debug "$TEST_FILE" &
 APP_PID=$!
 
-for i in {1..10}; do
+echo "Waiting up to 60 seconds for the File Information window to appear..." >&2
+for i in {1..60}; do
     if xdotool search --name "File Information" >/dev/null 2>&1; then
         break
     fi
     sleep 1
 done
-
-# Allow the application time to render its UI fully before taking the screenshot
-echo "Waiting for 2 seconds to allow the application time to render its UI..."
-sleep 2
+if ! xdotool search --name "File Information" >/dev/null 2>&1; then
+    echo "Timed out waiting for the File Information window to appear." >&2
+    exit 1
+fi
 
 window_id=$(xdotool search --name "File Information" | head -n 1)
 import -display "$XVFB_DISPLAY" -window "$window_id" "$SCREENSHOT"
