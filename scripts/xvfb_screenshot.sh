@@ -6,10 +6,16 @@ APP_PATH="target/release/file-information"
 SCREENSHOT="/tmp/file_information_test_screenshot.png"
 TEST_DIR="$HOME/tmp"
 TEST_FILE="$TEST_DIR/testfile.txt"
+APP_PID=""
+XVFB_PID=""
 
 cleanup() {
-    kill "${APP_PID}" 2>/dev/null || true
-    kill "${XVFB_PID}" 2>/dev/null || true
+    if [ -n "${APP_PID:-}" ]; then
+        kill "${APP_PID}" 2>/dev/null || true
+    fi
+    if [ -n "${XVFB_PID:-}" ]; then
+        kill "${XVFB_PID}" 2>/dev/null || true
+    fi
 }
 trap cleanup EXIT
 
@@ -66,7 +72,8 @@ done
 # Allow the application time to render its UI fully before taking the screenshot
 sleep 2
 
-import -display "$XVFB_DISPLAY" -window root "$SCREENSHOT"
+window_id=$(xdotool search --name "File Information" | head -n 1)
+import -display "$XVFB_DISPLAY" -window "$window_id" "$SCREENSHOT"
 
 # Print geometry of the "File Information" window
 geom=$(xdotool search --name "File Information" getwindowgeometry --shell)
