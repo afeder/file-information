@@ -11,4 +11,8 @@ apt-get install -y xvfb dbus-x11 xdotool imagemagick
 apt-get install -y tracker gedit xdg-utils
 xdg-mime default org.gnome.gedit.desktop text/plain
 
+# Clean out any existing build artifacts in case the space was not pristine
+# when handed to us.
+cargo clean
+
 echo "ENVIRONMENT SETUP COMPLETE."
