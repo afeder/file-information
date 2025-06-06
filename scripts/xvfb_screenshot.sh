@@ -43,6 +43,14 @@ fi
 tracker3 daemon -s >/dev/null
 tracker3 index --add "$TEST_DIR" >/dev/null
 
+# Wait for the test file to be indexed before launching the application
+for i in {1..15}; do
+    if tracker3 info "$TEST_FILE" >/dev/null 2>&1; then
+        break
+    fi
+    sleep 1
+done
+
 # Query Tracker for metadata about the file to be shown in the application
 echo "Tracker metadata for $TEST_FILE:" >&2
 tracker3 info "$TEST_FILE" || true
