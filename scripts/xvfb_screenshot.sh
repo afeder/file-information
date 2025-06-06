@@ -4,14 +4,8 @@ set -euo pipefail
 XVFB_DISPLAY=:99
 APP_PATH="target/release/file-information"
 SCREENSHOT="screenshot.png"
-TEST_DIR="$HOME/test"
+TEST_DIR="$HOME/tmp"
 TEST_FILE="$TEST_DIR/testfile.txt"
-
-# Create the directory and test file so Tracker can index it
-mkdir -p "$TEST_DIR"
-if [ ! -f "$TEST_FILE" ]; then
-    echo "This is a Tracker test file" > "$TEST_FILE"
-fi
 
 cleanup() {
     kill "${APP_PID}" 2>/dev/null || true
@@ -21,6 +15,12 @@ trap cleanup EXIT
 
 if [ ! -x "$APP_PATH" ]; then
     cargo build --release
+fi
+
+# Create the directory and test file so Tracker can index it
+mkdir -p "$TEST_DIR"
+if [ ! -f "$TEST_FILE" ]; then
+    echo "This is a Tracker test file" > "$TEST_FILE"
 fi
 
 Xvfb "$XVFB_DISPLAY" -screen 0 1024x768x24 &
@@ -40,6 +40,10 @@ fi
 
 tracker3 daemon -s >/dev/null
 tracker3 index --add "$TEST_DIR" >/dev/null
+
+# Query Tracker for metadata about the file to be shown in the application
+echo "Tracker metadata for $TEST_FILE:" >&2
+tracker3 info "$TEST_FILE" || true
 
 "$APP_PATH" "$TEST_FILE" &
 APP_PID=$!
@@ -73,14 +77,5 @@ if xdotool search --name "File Information" >/dev/null 2>&1; then
 else
     echo "Window closed successfully" >&2
 fi
-
-# Query Tracker for metadata about the file shown in the application
-if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
-    addr=$(dbus-daemon --session --fork --print-address)
-    export DBUS_SESSION_BUS_ADDRESS="$addr"
-fi
-
-echo "Tracker metadata for $TEST_FILE:" >&2
-tracker3 info "$TEST_FILE" || true
 
 exit 0
