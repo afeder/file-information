@@ -8,6 +8,7 @@ TEST_DIR="$HOME/tmp"
 TEST_FILE="$TEST_DIR/testfile.txt"
 APP_PID=""
 XVFB_PID=""
+XVFB_LOG="/tmp/xvfb.log"
 
 cleanup() {
     if [ -n "${APP_PID:-}" ]; then
@@ -30,7 +31,7 @@ if [ ! -f "$TEST_FILE" ]; then
     echo "This is a Tracker test file" > "$TEST_FILE"
 fi
 
-Xvfb "$XVFB_DISPLAY" -screen 0 1024x768x24 &
+Xvfb "$XVFB_DISPLAY" -screen 0 1024x768x24 >"$XVFB_LOG" 2>&1 &
 XVFB_PID=$!
 
 sleep 2
