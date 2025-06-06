@@ -52,7 +52,7 @@ tracker3 daemon -s >/dev/null
 tracker3 index --add "$TEST_DIR" >/dev/null
 
 # Wait for the test file to be indexed before launching the application
-echo "Waiting for Tracker to index $TEST_FILE (timeout 60s)..." >&2
+echo "Waiting up to 60 seconds for Tracker to index $TEST_FILE..." >&2
 for i in {1..60}; do
     if ! tracker3 info "$TEST_FILE" 2>&1 | grep -q "No metadata available"; then
         break
@@ -60,7 +60,7 @@ for i in {1..60}; do
     sleep 1
 done
 if tracker3 info "$TEST_FILE" 2>&1 | grep -q "No metadata available"; then
-    echo "Timed out waiting for Tracker to index $TEST_FILE" >&2
+    echo "Timed out waiting for Tracker to index $TEST_FILE." >&2
     exit 1
 fi
 
