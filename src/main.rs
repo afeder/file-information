@@ -35,10 +35,18 @@ struct TableRow {
 fn main() {
     let mut args: Vec<String> = env::args().skip(1).collect();
     let mut raw_uri = false;
-    if let Some(first) = args.first().map(|s| s.as_str()) {
-        if first == "-u" || first == "--uri" {
-            raw_uri = true;
-            args.remove(0);
+    let mut debug_flag = false;
+    loop {
+        match args.first().map(|s| s.as_str()) {
+            Some("-u") | Some("--uri") => {
+                raw_uri = true;
+                args.remove(0);
+            }
+            Some("-d") | Some("--debug") => {
+                debug_flag = true;
+                args.remove(0);
+            }
+            _ => break,
         }
     }
 
@@ -55,11 +63,19 @@ fn main() {
             .map(|s| s.to_string_lossy().into_owned())
             .collect();
         let mut raw = raw_uri;
+        let mut debug = debug_flag;
         let mut items = inputs.clone();
-        if let Some(first) = items.first().map(|s| s.as_str()) {
-            if first == "-u" || first == "--uri" {
-                raw = true;
-                items.remove(0);
+        loop {
+            match items.first().map(|s| s.as_str()) {
+                Some("-u") | Some("--uri") => {
+                    raw = true;
+                    items.remove(0);
+                }
+                Some("-d") | Some("--debug") => {
+                    debug = true;
+                    items.remove(0);
+                }
+                _ => break,
             }
         }
         if let Some(id) = items.first() {
@@ -69,10 +85,10 @@ fn main() {
                 gio::File::for_path(id).uri().to_string()
             };
             app.activate();
-            build_ui(app, uri.clone());
+            build_ui(app, uri.clone(), debug);
             0
         } else {
-            eprintln!("Usage: file-information [--uri|-u] <file-or-URI>");
+            eprintln!("Usage: file-information [--uri|-u] [--debug|-d] <file-or-URI>");
             1
         }
     });
@@ -81,14 +97,14 @@ fn main() {
 
     app.connect_open(move |app, files, _| {
         if let Some(file) = files.first() {
-            build_ui(app, file.uri().to_string());
+            build_ui(app, file.uri().to_string(), debug_flag);
         }
     });
 
     app.run();
 }
 
-fn build_ui(app: &Application, uri: String) {
+fn build_ui(app: &Application, uri: String, debug: bool) {
     let window = ApplicationWindow::builder()
         .application(app)
         .default_width(590)
@@ -201,8 +217,9 @@ fn build_ui(app: &Application, uri: String) {
     let app_clone = app.clone();
     let win_parent = window.clone();
     let uri_bl = uri.clone();
+    let debug_clone = debug;
     backlinks_button.connect_clicked(move |_| {
-        show_backlinks_window(&app_clone, &win_parent, uri_bl.clone());
+        show_backlinks_window(&app_clone, &win_parent, uri_bl.clone(), debug_clone);
     });
 
     let bottom_box = GtkBox::new(Orientation::Horizontal, 0);
@@ -233,7 +250,7 @@ fn build_ui(app: &Application, uri: String) {
 
     glib::MainContext::default().spawn_local(async move {
         let (is_file_data_object, rows) =
-            populate_grid(&app_clone, &window_clone, &grid_clone, &uri_clone).await;
+            populate_grid(&app_clone, &window_clone, &grid_clone, &uri_clone, debug).await;
         data_clone.borrow_mut().clear();
         data_clone.borrow_mut().extend(rows);
 
@@ -250,9 +267,13 @@ async fn populate_grid(
     window: &ApplicationWindow,
     grid: &Grid,
     uri: &str,
+    debug: bool,
 ) -> (bool, Vec<TableRow>) {
     while let Some(child) = grid.first_child() {
         grid.remove(&child);
+    }
+    if debug {
+        eprintln!("Fetching backlinks for {uri}");
     }
 
     let mut rows_vec = Vec::new();
@@ -294,9 +315,15 @@ async fn populate_grid(
         native_value: uri.to_string(),
     });
 
+    if debug {
+        eprintln!("Connecting to Tracker miner for metadata…");
+    }
     let conn = match SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None) {
         Ok(c) => c,
         Err(err) => {
+            if debug {
+                eprintln!("Failed to connect to Tracker: {err}");
+            }
             let dialog = gtk::MessageDialog::builder()
                 .transient_for(window)
                 .modal(true)
@@ -319,9 +346,15 @@ async fn populate_grid(
     "#,
         uri = uri
     );
+    if debug {
+        eprintln!("Running SPARQL query: {sparql}");
+    }
     let cursor = match conn.query_future(&sparql).await {
         Ok(c) => c,
         Err(err) => {
+            if debug {
+                eprintln!("SPARQL query error: {err}");
+            }
             let dialog = gtk::MessageDialog::builder()
                 .transient_for(window)
                 .modal(true)
@@ -426,8 +459,9 @@ async fn populate_grid(
                     lbl_link.set_margin_bottom(4);
 
                     let app_clone = app.clone();
+                    let debug_clone = debug;
                     lbl_link.connect_activate_link(move |_lbl, uri| {
-                        build_ui(&app_clone, uri.to_string());
+                        build_ui(&app_clone, uri.to_string(), debug_clone);
                         Propagation::Stop
                     });
 
@@ -495,6 +529,13 @@ async fn populate_grid(
                 row += 1;
             }
         }
+    }
+    if debug {
+        eprintln!(
+            "Query returned {} rows; FileDataObject: {}",
+            rows_vec.len() - 1,
+            is_file_data_object
+        );
     }
     (is_file_data_object, rows_vec)
 }
@@ -709,7 +750,7 @@ where
     widget.add_controller(gesture);
 }
 
-fn show_backlinks_window(app: &Application, parent: &ApplicationWindow, uri: String) {
+fn show_backlinks_window(app: &Application, parent: &ApplicationWindow, uri: String, debug: bool) {
     let window = ApplicationWindow::builder()
         .application(app)
         .transient_for(parent)
@@ -772,13 +813,14 @@ fn show_backlinks_window(app: &Application, parent: &ApplicationWindow, uri: Str
     let window_clone = window.clone();
     let grid_clone = grid.clone();
     let uri_clone = uri.clone();
+    let debug_clone = debug;
 
     glib::MainContext::default().spawn_local(async move {
-        populate_backlinks_grid(&app_clone, &window_clone, &grid_clone, &uri_clone).await;
+        populate_backlinks_grid(&app_clone, &window_clone, &grid_clone, &uri_clone, debug_clone).await;
     });
 }
 
-async fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri: &str) {
+async fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri: &str, debug: bool) {
     while let Some(child) = grid.first_child() {
         grid.remove(&child);
     }
@@ -786,6 +828,9 @@ async fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, 
     let conn = match SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None) {
         Ok(c) => c,
         Err(err) => {
+            if debug {
+                eprintln!("Failed to connect to Tracker: {err}");
+            }
             let dialog = gtk::MessageDialog::builder()
                 .transient_for(window)
                 .modal(true)
@@ -801,9 +846,15 @@ async fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, 
     };
 
     let sparql = format!("SELECT DISTINCT ?s ?p WHERE {{ ?s ?p <{uri}> }}", uri = uri);
+    if debug {
+        eprintln!("Running SPARQL query: {sparql}");
+    }
     let cursor = match conn.query_future(&sparql).await {
         Ok(c) => c,
         Err(err) => {
+            if debug {
+                eprintln!("SPARQL query error: {err}");
+            }
             let dialog = gtk::MessageDialog::builder()
                 .transient_for(window)
                 .modal(true)
@@ -836,8 +887,9 @@ async fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, 
             lbl_link.set_max_width_chars(80);
 
             let app_clone = app.clone();
+            let debug_clone = debug;
             lbl_link.connect_activate_link(move |_lbl, uri| {
-                build_ui(&app_clone, uri.to_string());
+                build_ui(&app_clone, uri.to_string(), debug_clone);
                 Propagation::Stop
             });
 
@@ -894,6 +946,9 @@ async fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, 
 
         grid.attach(&lbl_pred, 1, row, 1, 1);
         row += 1;
+    }
+    if debug {
+        eprintln!("Backlinks query returned {row} rows");
     }
 }
 

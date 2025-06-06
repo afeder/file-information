@@ -44,10 +44,8 @@ tracker3 daemon -s >/dev/null
 tracker3 index --add "$TEST_DIR" >/dev/null
 
 # Wait for the test file to be indexed before launching the application
-for i in {1..15}; do
-    if tracker3 info "$TEST_FILE" >/dev/null 2>&1; then
-        break
-    fi
+echo "Waiting for Tracker to index $TEST_FILE..." >&2
+while tracker3 info "$TEST_FILE" 2>&1 | grep -q "No metadata available"; do
     sleep 1
 done
 
@@ -55,7 +53,7 @@ done
 echo "Tracker metadata for $TEST_FILE:" >&2
 tracker3 info "$TEST_FILE" || true
 
-"$APP_PATH" "$TEST_FILE" &
+"$APP_PATH" --debug "$TEST_FILE" &
 APP_PID=$!
 
 for i in {1..10}; do
