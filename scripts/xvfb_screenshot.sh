@@ -3,6 +3,7 @@ set -euo pipefail
 
 XVFB_DISPLAY=:99
 SCREENSHOT="/tmp/file_information_test_screenshot.png"
+MASKED_SCREENSHOT="/tmp/file_information_test_screenshot_masked.png"
 TEST_DIR="$HOME/tmp"
 TEST_FILE="$TEST_DIR/testfile.txt"
 XVFB_LOG="/tmp/xvfb.log"
@@ -135,7 +136,7 @@ if ! $ready; then
     exit 1
 fi
 
-echo "Saves screenshot of window $window_id on display $XVFB_DISPLAY to $SCREENSHOT..."
+echo "Saving screenshot of window $window_id on display $XVFB_DISPLAY to $SCREENSHOT..."
 import -display "$XVFB_DISPLAY" -window "$window_id" "$SCREENSHOT"
 
 # Mask variable regions that can affect the MD5 digest by overlaying black
@@ -145,11 +146,11 @@ convert "$SCREENSHOT" \
     -fill black -draw "rectangle 176,180 310,193" \
     -fill black -draw "rectangle 176,205 183,218" \
     -fill black -draw "rectangle 11,230 568,445" \
-    "$SCREENSHOT"
+    "$MASKED_SCREENSHOT"
 
 # Compute and log the MD5 digest of the raw screenshot so it can be compared
 # against known values.
-digest=$(convert "$SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
+digest=$(convert "$MASKED_SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
 echo "Screenshot MD5 digest: $digest" >&2
 
 # Print geometry using the captured window ID
