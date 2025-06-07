@@ -49,6 +49,8 @@ mkdir -p "$TEST_DIR"
 if [ ! -f "$TEST_FILE" ]; then
     echo "The quick brown fox jumps over the lazy dog." > "$TEST_FILE"
 fi
+# Ensure the file timestamp is constant for reproducible tests
+touch -d '2000-01-01 00:00:00' "$TEST_FILE"
 
 echo "Launching Xvfb on display $XVFB_DISPLAY and piping output to $XVFB_LOG..."
 Xvfb "$XVFB_DISPLAY" -screen 0 1024x768x24 >"$XVFB_LOG" 2>&1 &
@@ -67,7 +69,7 @@ fi
 
 echo "Initiating Tracker indexing of $TEST_DIR..."
 # Let Tracker index the test directory.
-tracker3 daemon -s >/dev/null
+faketime '2000-01-01 00:00:00' tracker3 daemon -s >/dev/null
 tracker3 index --add "$TEST_DIR" >/dev/null
 
 # Wait for the test file to be indexed before launching the application

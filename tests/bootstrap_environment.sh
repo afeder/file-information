@@ -8,7 +8,7 @@ apt-get install -y libglib2.0-dev libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0
 
 # Install testing dependencies.
 apt-get install -y xvfb dbus-x11 xdotool imagemagick
-apt-get install -y tracker gedit xdg-utils
+apt-get install -y tracker faketime gedit xdg-utils
 xdg-mime default org.gnome.gedit.desktop text/plain
 
 # Clean out any existing build artifacts in case the space was not pristine
