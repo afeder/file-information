@@ -106,6 +106,15 @@ sleep 1
 echo "Saves screenshot of window $window_id on display $XVFB_DISPLAY to $SCREENSHOT..."
 import -display "$XVFB_DISPLAY" -window "$window_id" "$SCREENSHOT"
 
+# Compute and log the MD5 digest of the screenshot so it can be compared against
+# known values in CI logs.
+if command -v md5sum >/dev/null 2>&1; then
+    digest=$(md5sum "$SCREENSHOT" | awk '{print $1}')
+    echo "Screenshot MD5 digest: $digest" >&2
+else
+    echo "md5sum command not found; skipping digest calculation" >&2
+fi
+
 # Print geometry using the captured window ID
 echo "Acquiring window geometry..."
 geom=$(xdotool getwindowgeometry --shell "$window_id")
