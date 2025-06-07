@@ -251,6 +251,7 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
     glib::MainContext::default().spawn_local(async move {
         let (is_file_data_object, rows) =
             populate_grid(&app_clone, &window_clone, &grid_clone, &uri_clone, debug).await;
+        let row_count = rows.len().saturating_sub(1);
         data_clone.borrow_mut().clear();
         data_clone.borrow_mut().extend(rows);
 
@@ -259,6 +260,16 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
         } else {
             "Node Information"
         });
+
+        if debug {
+            glib::idle_add_local_once(move || {
+                eprintln!(
+                    "DEBUG: results displayed rows={} file_data={}",
+                    row_count,
+                    is_file_data_object
+                );
+            });
+        }
     });
 }
 
@@ -532,7 +543,7 @@ async fn populate_grid(
     }
     if debug {
         eprintln!(
-            "Query returned {} rows; FileDataObject: {}",
+            "DEBUG: query returned rows={} file_data={}",
             rows_vec.len() - 1,
             is_file_data_object
         );
