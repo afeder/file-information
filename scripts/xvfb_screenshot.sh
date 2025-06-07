@@ -53,12 +53,12 @@ tracker3 daemon -s >/dev/null
 tracker3 index --add "$TEST_DIR" >/dev/null
 
 # Wait for the test file to be indexed before launching the application
-echo "Waiting up to 60 seconds for Tracker to index $TEST_FILE..." >&2
-for i in {1..60}; do
+echo "Waiting up to 10 seconds for Tracker to index $TEST_FILE..." >&2
+for i in {1..100}; do
     if ! tracker3 info "$TEST_FILE" 2>&1 | grep -q "No metadata available"; then
         break
     fi
-    sleep 1
+    sleep 0.1
 done
 if tracker3 info "$TEST_FILE" 2>&1 | grep -q "No metadata available"; then
     echo "Timed out waiting for Tracker to index $TEST_FILE." >&2
@@ -74,12 +74,12 @@ rm -f "$APP_LOG"
 "$APP_PATH" --debug "$TEST_FILE" >"$APP_LOG" 2>&1 &
 app_pid=$!
 
-echo "Waiting up to 60 seconds for the File Information window to be created..." >&2
-for i in {1..60}; do
+echo "Waiting up to 10 seconds for the File Information window to be created..." >&2
+for i in {1..100}; do
     if xdotool search --name "File Information" >/dev/null 2>&1; then
         break
     fi
-    sleep 1
+    sleep 0.1
 done
 if ! xdotool search --name "File Information" >/dev/null 2>&1; then
     echo "Timed out waiting for the File Information window to be created." >&2
@@ -92,26 +92,26 @@ window_id=$(xdotool search --name "File Information" | head -n 1)
 # can exist before it has finished rendering, resulting in a blank capture. Use
 # xwininfo to wait until the map state is "IsViewable".
 echo "Waiting up to 10 seconds for the File Information window to become viewable..." >&2
-for i in {1..20}; do
+for i in {1..100}; do
     if xwininfo -id "$window_id" | grep -q "IsViewable"; then
         break
     fi
-    sleep 0.5
+    sleep 0.1
 done
 if ! xwininfo -id "$window_id" | grep -q "IsViewable"; then
     echo "Timed out waiting for the File Information window to become viewable." >&2
     exit 1
 fi
 
-echo "Waiting up to 60 seconds for results to be displayed..." >&2
+echo "Waiting up to 10 seconds for results to be displayed..." >&2
 ready=false
 # Poll for the structured debug message that indicates results are visible.
-for i in {1..60}; do
+for i in {1..100}; do
     if grep -q "DEBUG: results displayed" "$APP_LOG"; then
         ready=true
         break
     fi
-    sleep 1
+    sleep 0.1
 done
 if ! $ready; then
     echo "Timed out waiting for results to be displayed." >&2
@@ -147,14 +147,14 @@ close_y=$((Y + HEIGHT - 20))
 xdotool mousemove --sync "$close_x" "$close_y" click 1
 
 # Check if the window closed successfully
-echo "Waiting up to 5 seconds for the window to close..." >&2
+echo "Waiting up to 10 seconds for the window to close..." >&2
 closed=false
-for i in {1..10}; do
+for i in {1..100}; do
     if ! xwininfo -id "$window_id" >/dev/null 2>&1; then
         closed=true
         break
     fi
-    sleep 0.5
+    sleep 0.1
 done
 if $closed; then
     echo "Window closed successfully." >&2
