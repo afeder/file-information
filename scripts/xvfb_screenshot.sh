@@ -90,12 +90,17 @@ window_id=$(xdotool search --name "File Information" | head -n 1)
 # can exist before it has finished rendering, resulting in a blank capture. Use
 # xwininfo to check that the map state is "IsViewable" and give the GUI a bit of
 # extra time to paint.
+echo "Waiting up to 10 seconds for the File Information window to become viewable..." >&2
 for i in {1..20}; do
     if xwininfo -id "$window_id" | grep -q "IsViewable"; then
         break
     fi
     sleep 0.5
 done
+if ! xwininfo -id "$window_id" | grep -q "IsViewable"; then
+    echo "Timed out waiting for the File Information window to become viewable." >&2
+    exit 1
+fi
 sleep 1
 
 import -display "$XVFB_DISPLAY" -window "$window_id" "$SCREENSHOT"
