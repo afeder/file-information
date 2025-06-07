@@ -72,7 +72,7 @@ echo "Tracker metadata for $TEST_FILE:" >&2
 "$APP_PATH" --debug "$TEST_FILE" &
 APP_PID=$!
 
-echo "Waiting up to 60 seconds for the File Information window to appear..." >&2
+echo "Waiting up to 60 seconds for the File Information window to be created..." >&2
 for i in {1..60}; do
     if xdotool search --name "File Information" >/dev/null 2>&1; then
         break
@@ -80,7 +80,7 @@ for i in {1..60}; do
     sleep 1
 done
 if ! xdotool search --name "File Information" >/dev/null 2>&1; then
-    echo "Timed out waiting for the File Information window to appear." >&2
+    echo "Timed out waiting for the File Information window to be created." >&2
     exit 1
 fi
 
@@ -118,9 +118,9 @@ xdotool mousemove --sync "$close_x" "$close_y" click 1
 # Check if the window closed successfully
 sleep 1
 if xdotool search --name "File Information" >/dev/null 2>&1; then
-    echo "Window did not close" >&2
+    echo "Window did not close." >&2
 else
-    echo "Window closed successfully" >&2
+    echo "Window closed successfully." >&2
 fi
 
 exit 0
