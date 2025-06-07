@@ -7,15 +7,15 @@ SCREENSHOT="/tmp/file_information_test_screenshot.png"
 TEST_DIR="$HOME/tmp"
 TEST_FILE="$TEST_DIR/testfile.txt"
 app_pid=""
-XVFB_PID=""
+xvfb_pid=""
 XVFB_LOG="/tmp/xvfb.log"
 
 cleanup() {
     if [ -n "${app_pid:-}" ]; then
         kill "${app_pid}" 2>/dev/null || true
     fi
-    if [ -n "${XVFB_PID:-}" ]; then
-        kill "${XVFB_PID}" 2>/dev/null || true
+    if [ -n "${xvfb_pid:-}" ]; then
+        kill "${xvfb_pid}" 2>/dev/null || true
     fi
 }
 trap cleanup EXIT
@@ -33,7 +33,7 @@ fi
 
 echo "Launching Xvfb on display $XVFB_DISPLAY and piping output to $XVFB_LOG..."
 Xvfb "$XVFB_DISPLAY" -screen 0 1024x768x24 >"$XVFB_LOG" 2>&1 &
-XVFB_PID=$!
+xvfb_pid=$!
 
 export DISPLAY="$XVFB_DISPLAY"
 export GDK_BACKEND=x11
