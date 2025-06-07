@@ -133,12 +133,8 @@ convert "$SCREENSHOT" \
 
 # Compute and log the MD5 digest of the screenshot so it can be compared against
 # known values.
-if command -v md5sum >/dev/null 2>&1; then
-    digest=$(convert "$SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
-    echo "Screenshot MD5 digest: $digest" >&2
-else
-    echo "md5sum command not found; skipping digest calculation" >&2
-fi
+digest=$(convert "$SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
+echo "Screenshot MD5 digest: $digest" >&2
 
 # Print geometry using the captured window ID
 echo "Acquiring window geometry for window $window_id..."
