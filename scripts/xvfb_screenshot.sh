@@ -104,20 +104,19 @@ if ! xwininfo -id "$window_id" | grep -q "IsViewable"; then
     exit 1
 fi
 
-echo "Waiting up to 60 seconds for metadata to load..." >&2
+echo "Waiting up to 60 seconds for metadata to be displayed..." >&2
+ready=false
 for i in {1..60}; do
-    if grep -q "Query returned" "$APP_LOG"; then
+    if grep -q "DEBUG: results displayed" "$APP_LOG"; then
+        ready=true
         break
     fi
     sleep 1
 done
-if ! grep -q "Query returned" "$APP_LOG"; then
-    echo "Timed out waiting for metadata to load." >&2
+if ! $ready; then
+    echo "Timed out waiting for metadata to be displayed." >&2
     exit 1
 fi
-
-# Wait another second to give the UI time to draw.
-sleep 1
 
 echo "Saves screenshot of window $window_id on display $XVFB_DISPLAY to $SCREENSHOT..."
 import -display "$XVFB_DISPLAY" -window "$window_id" "$SCREENSHOT"
@@ -148,11 +147,19 @@ close_y=$((Y + HEIGHT - 20))
 xdotool mousemove --sync "$close_x" "$close_y" click 1
 
 # Check if the window closed successfully
-sleep 1
-if xwininfo -id "$window_id" >/dev/null 2>&1; then
-    echo "Window did not close." >&2
-else
+echo "Waiting up to 5 seconds for the window to close..." >&2
+closed=false
+for i in {1..10}; do
+    if ! xwininfo -id "$window_id" >/dev/null 2>&1; then
+        closed=true
+        break
+    fi
+    sleep 0.5
+done
+if $closed; then
     echo "Window closed successfully." >&2
+else
+    echo "Window did not close." >&2
 fi
 
 exit 0
