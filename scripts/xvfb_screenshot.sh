@@ -90,8 +90,7 @@ window_id=$(xdotool search --name "File Information" | head -n 1)
 
 # Wait for the window to be fully drawn before taking a screenshot. The window
 # can exist before it has finished rendering, resulting in a blank capture. Use
-# xwininfo to check that the map state is "IsViewable" and give the GUI a bit of
-# extra time to paint.
+# xwininfo to wait until the map state is "IsViewable".
 echo "Waiting up to 10 seconds for the File Information window to become viewable..." >&2
 for i in {1..20}; do
     if xwininfo -id "$window_id" | grep -q "IsViewable"; then
@@ -104,8 +103,9 @@ if ! xwininfo -id "$window_id" | grep -q "IsViewable"; then
     exit 1
 fi
 
-echo "Waiting up to 60 seconds for metadata to be displayed..." >&2
+echo "Waiting up to 60 seconds for results to be displayed..." >&2
 ready=false
+# Poll for the structured debug message that indicates results are visible.
 for i in {1..60}; do
     if grep -q "DEBUG: results displayed" "$APP_LOG"; then
         ready=true
@@ -114,7 +114,7 @@ for i in {1..60}; do
     sleep 1
 done
 if ! $ready; then
-    echo "Timed out waiting for metadata to be displayed." >&2
+    echo "Timed out waiting for results to be displayed." >&2
     exit 1
 fi
 
