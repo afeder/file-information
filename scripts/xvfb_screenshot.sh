@@ -6,9 +6,9 @@ APP_PATH="target/release/file-information"
 SCREENSHOT="/tmp/file_information_test_screenshot.png"
 TEST_DIR="$HOME/tmp"
 TEST_FILE="$TEST_DIR/testfile.txt"
+XVFB_LOG="/tmp/xvfb.log"
 app_pid=""
 xvfb_pid=""
-XVFB_LOG="/tmp/xvfb.log"
 
 cleanup() {
     if [ -n "${app_pid:-}" ]; then
