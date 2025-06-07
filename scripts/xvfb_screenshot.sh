@@ -2,7 +2,19 @@
 set -euo pipefail
 
 XVFB_DISPLAY=:99
-APP_PATH="target/release/file-information"
+release=false
+for arg in "$@"; do
+    if [ "$arg" = "--release" ]; then
+        release=true
+        break
+    fi
+done
+
+if $release; then
+    APP_PATH="target/release/file-information"
+else
+    APP_PATH="target/debug/file-information"
+fi
 SCREENSHOT="/tmp/file_information_test_screenshot.png"
 TEST_DIR="$HOME/tmp"
 TEST_FILE="$TEST_DIR/testfile.txt"
@@ -23,7 +35,11 @@ trap cleanup EXIT
 
 echo "Building the application (may take some time)..."
 if [ ! -x "$APP_PATH" ]; then
-    cargo build --release
+    if $release; then
+        cargo build --release
+    else
+        cargo build
+    fi
 fi
 
 # Create the directory and test file so Tracker can index it
