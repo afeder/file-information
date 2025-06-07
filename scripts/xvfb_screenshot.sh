@@ -7,9 +7,9 @@ SCREENSHOT="/tmp/file_information_test_screenshot.png"
 TEST_DIR="$HOME/tmp"
 TEST_FILE="$TEST_DIR/testfile.txt"
 XVFB_LOG="/tmp/xvfb.log"
+APP_LOG="/tmp/file_information_app.log"
 app_pid=""
 xvfb_pid=""
-APP_LOG="/tmp/file_information_app.log"
 
 cleanup() {
     if [ -n "${app_pid:-}" ]; then
@@ -29,7 +29,7 @@ fi
 # Create the directory and test file so Tracker can index it
 mkdir -p "$TEST_DIR"
 if [ ! -f "$TEST_FILE" ]; then
-    echo "This is a Tracker test file" > "$TEST_FILE"
+    echo "The quick brown fox jumps over the lazy dog." > "$TEST_FILE"
 fi
 
 echo "Launching Xvfb on display $XVFB_DISPLAY and piping output to $XVFB_LOG..."
