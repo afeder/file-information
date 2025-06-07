@@ -2,19 +2,6 @@
 set -euo pipefail
 
 XVFB_DISPLAY=:99
-release=false
-for arg in "$@"; do
-    if [ "$arg" = "--release" ]; then
-        release=true
-        break
-    fi
-done
-
-if $release; then
-    APP_PATH="target/release/file-information"
-else
-    APP_PATH="target/debug/file-information"
-fi
 SCREENSHOT="/tmp/file_information_test_screenshot.png"
 TEST_DIR="$HOME/tmp"
 TEST_FILE="$TEST_DIR/testfile.txt"
@@ -33,8 +20,22 @@ cleanup() {
 }
 trap cleanup EXIT
 
+release=false
+for arg in "$@"; do
+    if [ "$arg" = "--release" ]; then
+        release=true
+        break
+    fi
+done
+
+if $release; then
+    app_path="target/release/file-information"
+else
+    app_path="target/debug/file-information"
+fi
+
 echo "Building the application (may take some time)..."
-if [ ! -x "$APP_PATH" ]; then
+if [ ! -x "$app_path" ]; then
     if $release; then
         cargo build --release
     else
@@ -87,7 +88,7 @@ echo "Tracker metadata for $TEST_FILE:" >&2
 
 
 rm -f "$APP_LOG"
-"$APP_PATH" --debug "$TEST_FILE" >"$APP_LOG" 2>&1 &
+"$app_path" --debug "$TEST_FILE" >"$APP_LOG" 2>&1 &
 app_pid=$!
 
 echo "Waiting up to 10 seconds for the File Information window to be created..." >&2
