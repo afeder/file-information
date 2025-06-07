@@ -119,6 +119,14 @@ fi
 echo "Saves screenshot of window $window_id on display $XVFB_DISPLAY to $SCREENSHOT..."
 import -display "$XVFB_DISPLAY" -window "$window_id" "$SCREENSHOT"
 
+# Mask variable regions that can affect the MD5 digest by overlaying two
+# black rectangles on the captured image. The coordinates roughly match the
+# size and position of a typical value field.
+convert "$SCREENSHOT" \
+    -fill black -draw "rectangle 200,120 350,150" \
+    -fill black -draw "rectangle 200,170 350,200" \
+    "$SCREENSHOT"
+
 # Compute and log the MD5 digest of the screenshot so it can be compared against
 # known values in CI logs.
 if command -v md5sum >/dev/null 2>&1; then
