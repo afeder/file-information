@@ -15,4 +15,6 @@ xdg-mime default org.gnome.gedit.desktop text/plain
 # when handed to us.
 cargo clean
 
+date -s "2000-01-01 00:00:00"
+
 echo "ENVIRONMENT SETUP COMPLETE."
