@@ -9,6 +9,7 @@ TEST_FILE="$TEST_DIR/testfile.txt"
 XVFB_LOG="/tmp/xvfb.log"
 app_pid=""
 xvfb_pid=""
+APP_LOG="/tmp/file_information_app.log"
 
 cleanup() {
     if [ -n "${app_pid:-}" ]; then
@@ -69,7 +70,8 @@ echo "Tracker metadata for $TEST_FILE:" >&2
 (tracker3 info "$TEST_FILE" || true) | head -n 5
 
 
-"$APP_PATH" --debug "$TEST_FILE" &
+rm -f "$APP_LOG"
+"$APP_PATH" --debug "$TEST_FILE" >"$APP_LOG" 2>&1 &
 app_pid=$!
 
 echo "Waiting up to 60 seconds for the File Information window to be created..." >&2
@@ -91,6 +93,7 @@ window_id=$(xdotool search --name "File Information" | head -n 1)
 # xwininfo to check that the map state is "IsViewable" and give the GUI a bit of
 # extra time to paint.
 echo "Waiting up to 10 seconds for the File Information window to become viewable..." >&2
+
 for i in {1..20}; do
     if xwininfo -id "$window_id" | grep -q "IsViewable"; then
         break
@@ -101,8 +104,20 @@ if ! xwininfo -id "$window_id" | grep -q "IsViewable"; then
     echo "Timed out waiting for the File Information window to become viewable." >&2
     exit 1
 fi
-sleep 1
 
+echo "Waiting up to 60 seconds for metadata to load..." >&2
+for i in {1..60}; do
+    if grep -q "Query returned" "$APP_LOG"; then
+        break
+    fi
+    sleep 1
+done
+if ! grep -q "Query returned" "$APP_LOG"; then
+    echo "Timed out waiting for metadata to load." >&2
+    exit 1
+fi
+
+sleep 1
 echo "Saves screenshot of window $window_id on display $XVFB_DISPLAY to $SCREENSHOT..."
 import -display "$XVFB_DISPLAY" -window "$window_id" "$SCREENSHOT"
 
