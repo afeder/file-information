@@ -103,9 +103,11 @@ if ! xwininfo -id "$window_id" | grep -q "IsViewable"; then
 fi
 sleep 1
 
+echo "Saves screenshot of window $window_id on display $XVFB_DISPLAY to $SCREENSHOT..."
 import -display "$XVFB_DISPLAY" -window "$window_id" "$SCREENSHOT"
 
 # Print geometry of the "File Information" window
+echo "Acquiring window geometry..."
 geom=$(xdotool search --name "File Information" getwindowgeometry --shell)
 eval "$geom"
 echo "Window geometry: X=$X Y=$Y WIDTH=$WIDTH HEIGHT=$HEIGHT" >&2
