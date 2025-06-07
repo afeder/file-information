@@ -125,7 +125,7 @@ convert "$SCREENSHOT" \
     -fill black -draw "rectangle 176,130 310,143" \
     -fill black -draw "rectangle 176,180 310,193" \
     -fill black -draw "rectangle 176,205 183,218" \
-    -fill black -draw "rectangle 12,230 568,443" \
+    -fill black -draw "rectangle 12,230 568,445" \
     "$SCREENSHOT"
 
 # Compute and log the MD5 digest of the screenshot so it can be compared against
