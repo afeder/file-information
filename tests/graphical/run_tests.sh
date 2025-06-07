@@ -71,8 +71,8 @@ tracker3 daemon -s >/dev/null
 tracker3 index --add "$TEST_DIR" >/dev/null
 
 # Wait for the test file to be indexed before launching the application
-echo "Waiting up to 10 seconds for Tracker to index $TEST_FILE..." >&2
-for i in {1..100}; do
+echo "Waiting up to 60 seconds for Tracker to index $TEST_FILE..." >&2
+for i in {1..600}; do
     if ! tracker3 info "$TEST_FILE" 2>&1 | grep -q "No metadata available"; then
         break
     fi
