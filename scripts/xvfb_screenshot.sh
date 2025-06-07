@@ -124,12 +124,8 @@ import -display "$XVFB_DISPLAY" -window "$window_id" "$SCREENSHOT"
 convert "$SCREENSHOT" \
     -fill black -draw "rectangle 176,130 310,143" \
     -fill black -draw "rectangle 176,180 310,193" \
-    -fill black -draw "rectangle 176,230 324,243" \
-    -fill black -draw "rectangle 176,257 324,270" \
-    -fill black -draw "rectangle 176,282 324,295" \
-    -fill black -draw "rectangle 176,309 310,322" \
-    -fill black -draw "rectangle 176,404 310,417" \
-    -fill black -draw "rectangle 176,429 310,442" \
+    -fill black -draw "rectangle 176,205 183,218" \
+    -fill black -draw "rectangle 12,230 568,443" \
     "$SCREENSHOT"
 
 # Compute and log the MD5 digest of the screenshot so it can be compared against
