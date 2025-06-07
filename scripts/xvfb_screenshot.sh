@@ -6,13 +6,13 @@ APP_PATH="target/release/file-information"
 SCREENSHOT="/tmp/file_information_test_screenshot.png"
 TEST_DIR="$HOME/tmp"
 TEST_FILE="$TEST_DIR/testfile.txt"
-APP_PID=""
+app_pid=""
 XVFB_PID=""
 XVFB_LOG="/tmp/xvfb.log"
 
 cleanup() {
-    if [ -n "${APP_PID:-}" ]; then
-        kill "${APP_PID}" 2>/dev/null || true
+    if [ -n "${app_pid:-}" ]; then
+        kill "${app_pid}" 2>/dev/null || true
     fi
     if [ -n "${XVFB_PID:-}" ]; then
         kill "${XVFB_PID}" 2>/dev/null || true
@@ -70,7 +70,7 @@ echo "Tracker metadata for $TEST_FILE:" >&2
 
 
 "$APP_PATH" --debug "$TEST_FILE" &
-APP_PID=$!
+app_pid=$!
 
 echo "Waiting up to 60 seconds for the File Information window to be created..." >&2
 for i in {1..60}; do
@@ -120,6 +120,7 @@ xdotool mousemove --sync "$close_x" "$close_y" click 1
 # Check if the window closed successfully
 sleep 1
 if xwininfo -id "$window_id" >/dev/null 2>&1; then
+
     echo "Window did not close." >&2
 else
     echo "Window closed successfully." >&2
