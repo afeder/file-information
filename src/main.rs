@@ -4,7 +4,7 @@ use csv::WriterBuilder;
 use gdk4::Display;
 use gdk4::Rectangle;
 use gio::{ApplicationFlags, Cancellable};
-use glib::{Propagation, Variant, VariantTy};
+use glib::{Propagation, Variant, VariantTy, ControlFlow};
 use gtk::WrapMode as GtkWrapMode;
 use gtk::pango;
 use gtk::{Box as GtkBox, Button, CssProvider, Grid, Label, Orientation, TextView, Widget};
@@ -262,12 +262,13 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
         });
 
         if debug {
-            glib::idle_add_local_once(move || {
+            grid_clone.add_tick_callback(move |_, _| {
                 eprintln!(
                     "DEBUG: results displayed rows={} file_data={}",
                     row_count,
                     is_file_data_object
                 );
+                ControlFlow::Break
             });
         }
     });
