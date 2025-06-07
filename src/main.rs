@@ -4,7 +4,7 @@ use csv::WriterBuilder;
 use gdk4::Display;
 use gdk4::Rectangle;
 use gio::{ApplicationFlags, Cancellable};
-use glib::{Propagation, Variant, VariantTy, ControlFlow};
+use glib::{Propagation, Variant, VariantTy};
 use gtk::WrapMode as GtkWrapMode;
 use gtk::pango;
 use gtk::{Box as GtkBox, Button, CssProvider, Grid, Label, Orientation, TextView, Widget};
@@ -262,14 +262,26 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
         });
 
         if debug {
-            grid_clone.add_tick_callback(move |_, _| {
-                eprintln!(
-                    "DEBUG: results displayed rows={} file_data={}",
-                    row_count,
-                    is_file_data_object
-                );
-                ControlFlow::Break
-            });
+            if let Some(clock) = grid_clone.frame_clock() {
+                use std::cell::RefCell;
+                use gdk4::FrameClockPhase;
+
+                let handler: Rc<RefCell<Option<glib::SignalHandlerId>>> =
+                    Rc::new(RefCell::new(None));
+                let handler_clone = handler.clone();
+                let id = clock.connect_after_paint(move |clk| {
+                    if let Some(h) = handler_clone.borrow_mut().take() {
+                        clk.disconnect(h);
+                    }
+                    eprintln!(
+                        "DEBUG: results displayed rows={} file_data={}",
+                        row_count,
+                        is_file_data_object
+                    );
+                });
+                *handler.borrow_mut() = Some(id);
+                clock.request_phase(FrameClockPhase::AFTER_PAINT);
+            }
         }
     });
 }
