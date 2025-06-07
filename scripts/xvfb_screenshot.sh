@@ -116,6 +116,9 @@ if ! grep -q "Query returned" "$APP_LOG"; then
     exit 1
 fi
 
+# Wait another second to give the UI time to draw.
+sleep 1
+
 echo "Saves screenshot of window $window_id on display $XVFB_DISPLAY to $SCREENSHOT..."
 import -display "$XVFB_DISPLAY" -window "$window_id" "$SCREENSHOT"
 
