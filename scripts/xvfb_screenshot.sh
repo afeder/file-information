@@ -131,8 +131,8 @@ convert "$SCREENSHOT" \
     -fill black -draw "rectangle 11,230 568,445" \
     "$SCREENSHOT"
 
-# Compute and log the MD5 digest of the screenshot so it can be compared against
-# known values.
+# Compute and log the MD5 digest of the raw screenshot so it can be compared
+# against known values.
 digest=$(convert "$SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
 echo "Screenshot MD5 digest: $digest" >&2
 
