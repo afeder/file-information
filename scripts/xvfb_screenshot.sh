@@ -120,7 +120,6 @@ xdotool mousemove --sync "$close_x" "$close_y" click 1
 # Check if the window closed successfully
 sleep 1
 if xwininfo -id "$window_id" >/dev/null 2>&1; then
-
     echo "Window did not close." >&2
 else
     echo "Window closed successfully." >&2
