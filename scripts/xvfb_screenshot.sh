@@ -106,9 +106,9 @@ sleep 1
 echo "Saves screenshot of window $window_id on display $XVFB_DISPLAY to $SCREENSHOT..."
 import -display "$XVFB_DISPLAY" -window "$window_id" "$SCREENSHOT"
 
-# Print geometry of the "File Information" window
+# Print geometry using the captured window ID
 echo "Acquiring window geometry..."
-geom=$(xdotool search --name "File Information" getwindowgeometry --shell)
+geom=$(xdotool getwindowgeometry --shell "$window_id")
 eval "$geom"
 echo "Window geometry: X=$X Y=$Y WIDTH=$WIDTH HEIGHT=$HEIGHT" >&2
 
@@ -119,7 +119,7 @@ xdotool mousemove --sync "$close_x" "$close_y" click 1
 
 # Check if the window closed successfully
 sleep 1
-if xdotool search --name "File Information" >/dev/null 2>&1; then
+if xwininfo -id "$window_id" >/dev/null 2>&1; then
     echo "Window did not close." >&2
 else
     echo "Window closed successfully." >&2
