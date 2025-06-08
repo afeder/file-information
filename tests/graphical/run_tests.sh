@@ -250,8 +250,8 @@ main_Y=$Y
 main_WIDTH=$WIDTH
 main_HEIGHT=$HEIGHT
 
-# Click the Open button and verify our mock handler is executed.
-log "Clicking the Open button in the main window..."
+# Click the "Open" button and verify our mock handler is executed.
+log "Clicking the \"Open\" button in the main window..."
 rm -f /tmp/mock_open_invoked /tmp/mock_open_args
 open_x=$((main_X + main_WIDTH - 150))
 open_y=$((main_Y + main_HEIGHT - 20))
@@ -259,22 +259,23 @@ run_and_time xdotool mousemove --sync "$open_x" "$open_y" click 1
 
 for i in {1..100}; do
     if [ -f /tmp/mock_open_invoked ]; then
-        log "Mock handler invoked after clicking Open." 
+        log "The mock handler was successfully triggered when clicking \"Open\"."
         break
     fi
     sleep 0.1
 done
 if [ ! -f /tmp/mock_open_invoked ]; then
-    error "Open button failed to invoke the mock handler."
+    error "Clicking the \"Open\" button failed to trigger the mock handler."
 fi
 
-# Open the Backlinks view by clicking the Backlinks button near the bottom-right
+# Open the "Backlinks" view by clicking the "Backlinks" button near the bottom-right
 # of the main window.
+log "Clicking the \"Backlinks\" button in the main window..."
 backlinks_x=$((main_X + main_WIDTH - 270))
 backlinks_y=$((main_Y + main_HEIGHT - 20))
 run_and_time xdotool mousemove --sync "$backlinks_x" "$backlinks_y" click 1
 
-log "Waiting up to 10 seconds for the Backlinks window to be created..."
+log "Waiting up to 10 seconds for the \"Backlinks\" window to be created..."
 for i in {1..100}; do
     if xdotool search --name "Backlinks" >/dev/null 2>&1; then
         break
@@ -282,7 +283,7 @@ for i in {1..100}; do
     sleep 0.1
 done
 if ! xdotool search --name "Backlinks" >/dev/null 2>&1; then
-    error "Timed out waiting for the Backlinks window to be created."
+    error "Timed out waiting for the \"Backlinks\" window to be created."
     exit 1
 fi
 
@@ -305,37 +306,38 @@ fi
 
 log "Saving screenshot of window $backlinks_window_id on display $XVFB_DISPLAY to $BACKLINKS_SCREENSHOT..."
 import -display "$XVFB_DISPLAY" -window "$backlinks_window_id" "$BACKLINKS_SCREENSHOT"
-log "Backlinks window screenshot saved to $BACKLINKS_SCREENSHOT."
+log "\"Backlinks\" window screenshot saved to $BACKLINKS_SCREENSHOT."
 
-# Mask known variable regions in the Backlinks window screenshot.
+# Mask known variable regions in the "Backlinks" window screenshot.
 convert "$BACKLINKS_SCREENSHOT" \
     -fill black -draw "rectangle 11,57 310,70" \
     "$BACKLINKS_SCREENSHOT_MASKED"
 
 backlinks_window_digest=$(convert "$BACKLINKS_SCREENSHOT_MASKED" rgba:- | md5sum | awk '{print $1}')
-log "Masked Backlinks window screenshot MD5 digest: $backlinks_window_digest."
+log "Masked \"Backlinks\" window screenshot MD5 digest: $backlinks_window_digest."
 
 convert "$BACKLINKS_SCREENSHOT_STORED" \
     -fill black -draw "rectangle 11,57 310,70" \
     "$BACKLINKS_SCREENSHOT_STORED_MASKED"
 backlinks_window_stored_digest=$(convert "$BACKLINKS_SCREENSHOT_STORED_MASKED" rgba:- | md5sum | awk '{print $1}')
 if [ "$backlinks_window_digest" = "$backlinks_window_stored_digest" ]; then
-    log "Masked Backlinks window screenshot matches the stored reference."
+    log "Masked \"Backlinks\" window screenshot matches the stored reference."
 else
-    error "Masked Backlinks window screenshot does not match the stored reference."
+    error "Masked \"Backlinks\" window screenshot does not match the stored reference."
 fi
 
 log "Acquiring window geometry for window $backlinks_window_id..."
 geom=$(xdotool getwindowgeometry --shell "$backlinks_window_id")
 eval "$geom"
-log "Backlinks window geometry: X=$X Y=$Y WIDTH=$WIDTH HEIGHT=$HEIGHT."
+log "\"Backlinks\" window geometry: X=$X Y=$Y WIDTH=$WIDTH HEIGHT=$HEIGHT."
 
-# Close the Backlinks window.
+# Close the "Backlinks" window.
+log "Clicking the \"Close\" button in the \"Backlinks\" window..."
 close_x=$((X + WIDTH - 20))
 close_y=$((Y + HEIGHT - 20))
 run_and_time xdotool mousemove --sync "$close_x" "$close_y" click 1
 
-log "Waiting up to 10 seconds for the Backlinks window to close..."
+log "Waiting up to 10 seconds for the \"Backlinks\" window to close..."
 closed=false
 for i in {1..100}; do
     if ! xwininfo -id "$backlinks_window_id" >/dev/null 2>&1; then
@@ -345,13 +347,14 @@ for i in {1..100}; do
     sleep 0.1
 done
 if $closed; then
-    log "Backlinks window closed successfully."
+    log "\"Backlinks\" window closed successfully."
 else
-    error "Backlinks window failed to close."
+    error "\"Backlinks\" window failed to close."
     exit 1
 fi
 
 # Now close the main window.
+log "Clicking the \"Close\" button in the main window..."
 main_close_x=$((main_X + main_WIDTH - 20))
 main_close_y=$((main_Y + main_HEIGHT - 20))
 # We do not use --sync here, because that causes the command to take very long
