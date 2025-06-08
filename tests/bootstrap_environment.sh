@@ -20,6 +20,7 @@ if [ "$force" = 0 ] && { [ -n "$XDG_CURRENT_DESKTOP" ] || [ -n "$DESKTOP_SESSION
     exit 1
 fi
 
+# Update the list of available packages and their versions.
 apt-get update
 
 # Install main app dependencies.
