@@ -6,6 +6,10 @@ MAIN_SCREENSHOT="/tmp/file_information_main_screenshot.png"
 MAIN_MASKED_SCREENSHOT="/tmp/file_information_main_screenshot_masked.png"
 BACKLINKS_SCREENSHOT="/tmp/file_information_backlinks_screenshot.png"
 BACKLINKS_MASKED_SCREENSHOT="/tmp/file_information_backlinks_screenshot_masked.png"
+STORED_MAIN_SCREENSHOT="tests/graphical/images/file_information_main_screenshot.png"
+STORED_BACKLINKS_SCREENSHOT="tests/graphical/images/file_information_backlinks_screenshot.png"
+MAIN_STORED_MASKED="/tmp/file_information_main_screenshot_masked_stored.png"
+BACKLINKS_STORED_MASKED="/tmp/file_information_backlinks_screenshot_masked_stored.png"
 TEST_DIR="$HOME/tmp"
 TEST_FILE="$TEST_DIR/testfile.txt"
 XVFB_LOG="/tmp/xvfb.log"
@@ -187,8 +191,22 @@ convert "$MAIN_SCREENSHOT" \
 
 # Compute and log the MD5 digest of the raw screenshot so it can be compared
 # against known values.
-digest=$(convert "$MAIN_MASKED_SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
-log "Main window screenshot MD5 digest: $digest."
+main_window_digest=$(convert "$MAIN_MASKED_SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
+log "Main window screenshot MD5 digest: $main_window_digest."
+
+# Compute MD5 digest of the stored reference screenshot for comparison.
+convert "$STORED_MAIN_SCREENSHOT" \
+    -fill black -draw "rectangle 176,130 310,143" \
+    -fill black -draw "rectangle 176,180 310,193" \
+    -fill black -draw "rectangle 176,205 183,218" \
+    -fill black -draw "rectangle 11,230 568,445" \
+    "$MAIN_STORED_MASKED"
+main_window_stored_digest=$(convert "$MAIN_STORED_MASKED" rgba:- | md5sum | awk '{print $1}')
+if [ "$main_window_digest" = "$main_window_stored_digest" ]; then
+    log "Main window screenshot matches the stored reference."
+else
+    error "Main window screenshot does not match the stored reference."
+fi
 
 # Print geometry using the captured window ID.
 log "Acquiring window geometry for window $main_window_id..."
@@ -246,8 +264,18 @@ convert "$BACKLINKS_SCREENSHOT" \
     -fill black -draw "rectangle 11,57 310,70" \
     "$BACKLINKS_MASKED_SCREENSHOT"
 
-back_digest=$(convert "$BACKLINKS_MASKED_SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
-log "Backlinks window screenshot MD5 digest: $back_digest."
+backlinks_window_digest=$(convert "$BACKLINKS_MASKED_SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
+log "Backlinks window screenshot MD5 digest: $backlinks_window_digest."
+
+convert "$STORED_BACKLINKS_SCREENSHOT" \
+    -fill black -draw "rectangle 11,57 310,70" \
+    "$BACKLINKS_STORED_MASKED"
+backlinks_window_stored_digest=$(convert "$BACKLINKS_STORED_MASKED" rgba:- | md5sum | awk '{print $1}')
+if [ "$backlinks_window_digest" = "$backlinks_window_stored_digest" ]; then
+    log "Backlinks window screenshot matches the stored reference."
+else
+    error "Backlinks window screenshot does not match the stored reference."
+fi
 
 log "Acquiring window geometry for window $backlinks_window_id..."
 geom=$(xdotool getwindowgeometry --shell "$backlinks_window_id")
