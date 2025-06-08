@@ -7,8 +7,7 @@ MAIN_MASKED_SCREENSHOT="/tmp/file_information_main_screenshot_masked.png"
 BACKLINKS_SCREENSHOT="/tmp/file_information_backlinks_screenshot.png"
 BACKLINKS_MASKED_SCREENSHOT="/tmp/file_information_backlinks_screenshot_masked.png"
 TEST_DIR="$HOME/tmp"
-TEST_SUBDIR="$TEST_DIR/subdir"
-TEST_FILE="$TEST_SUBDIR/testfile.txt"
+TEST_FILE="$TEST_DIR/testfile.txt"
 XVFB_LOG="/tmp/xvfb.log"
 APP_LOG="/tmp/file_information_app.log"
 
@@ -78,7 +77,7 @@ else
 fi
 
 # Create the directory and test file so Tracker can index it.
-mkdir -p "$TEST_SUBDIR"
+mkdir -p "$TEST_DIR"
 if [ ! -f "$TEST_FILE" ]; then
     echo "The quick brown fox jumps over the lazy dog." > "$TEST_FILE"
 fi
@@ -102,7 +101,7 @@ fi
 log "Initiating Tracker indexing of $TEST_DIR..."
 # Let Tracker index the test directory.
 tracker3 daemon -s >/dev/null
-tracker3 index --add --recursive "$TEST_DIR" >/dev/null
+tracker3 index --add "$TEST_DIR" >/dev/null
 
 # Wait for the test file to be indexed before launching the application.
 log "Waiting up to 60 seconds for Tracker to index $TEST_FILE..."
