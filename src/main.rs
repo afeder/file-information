@@ -1,3 +1,6 @@
+// The application is built with GTK4/Adwaita.  Most widgets live in the `adw`
+// and `gtk` crates.  We also communicate with GNOME Tracker over D-Bus using
+// the `tracker` crate and issue SPARQL queries.
 use adw::prelude::*;
 use adw::{Application, ApplicationWindow, HeaderBar, ToolbarView};
 use csv::WriterBuilder;
@@ -12,45 +15,83 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
 use std::rc::Rc;
-use tracker::SparqlConnection;
 use tracker::prelude::SparqlCursorExtManual;
+use tracker::SparqlConnection;
 use url::Url;
 
+// Application ID used when creating the `adw::Application`.  This needs to be
+// unique so that DBus can correctly identify our instance.
 const APP_ID: &str = "com.example.FileInformation";
 
+// Text shown when the user passes `--help`.  We keep it minimal because the
+// application is primarily graphical.
 const USAGE: &str = "Usage: file-information [--uri|-u] [--debug|-d] <file-or-URI>";
 
+// Maximum number of characters to show in tooltips before truncating with an
+// ellipsis.  Tooltips should stay small so they do not obscure the UI.
 const TOOLTIP_MAX_CHARS: usize = 80;
 
+// Some tooltips display verbose comments from the ontology.  We allow these to
+// be a little longer than regular tooltips.
 const COMMENT_TOOLTIP_MAX_CHARS: usize = TOOLTIP_MAX_CHARS * 3;
 
+// Common RDF predicate used to state the type/class of a resource.
 const RDF_TYPE: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
 
+// Tracker encodes dates using the following XML schema datatype URI.  It is
+// important not to rename this constant as tests depend on it.
 const XSD_DATETYPE: &str = "http://www.w3.org/2001/XMLSchema#dateType";
 
+// Predicate for fetching human readable comments about ontology terms.
 const RDFS_COMMENT: &str = "http://www.w3.org/2000/01/rdf-schema#comment";
 
+// Tracker uses this class to represent files it knows about.  When the SPARQL
+// query indicates that the resource is an instance of this class we adapt the
+// UI accordingly.
 const FILEDATAOBJECT: &str = "http://tracker.api.gnome.org/ontology/v3/nfo#FileDataObject";
 
 #[derive(Clone, Default)]
+/// Representation of a single row in the main grid.  Each row shows a
+/// predicate/value pair both in a human readable form and in the raw form
+/// returned by Tracker.  The `display_*` fields contain strings presented to the
+/// user while the `native_*` fields hold the unmodified data that can be copied
+/// to the clipboard.
 struct TableRow {
+    /// Localized predicate label shown to the user.
     display_predicate: String,
+    /// URI form of the predicate as returned by Tracker.
     native_predicate: String,
+    /// Value shown in the UI (may be formatted or shortened).
     display_value: String,
+    /// Raw value from Tracker without any formatting.
     native_value: String,
 }
 
+/// Entry point of the application.  Parsing of command line arguments happens
+/// here and we set up the GTK `Application` object.  This function is small but
+/// it orchestrates the entire flow of the program.
 fn main() {
+    // Collect command line arguments excluding the program name.  `env::args()`
+    // yields an iterator of OsString which we convert to owned `String`s for
+    // convenience.
     let mut args: Vec<String> = env::args().skip(1).collect();
 
+    // If the user requests help we simply print usage information and exit
+    // without creating any GTK windows.  This keeps the CLI fast and scriptable.
     if args.iter().any(|a| a == "-h" || a == "--help") {
         eprintln!("{}", USAGE);
         return;
     }
 
+    // Options are parsed manually.  `--uri` indicates that the argument is a
+    // literal URI and should not be converted from a filesystem path.  The
+    // `--debug` flag enables additional debug output on stderr.
     let mut raw_uri = false;
     let mut debug_flag = false;
 
+    // Pull any options from the front of the argument list.  This allows the
+    // program to be called like `file-information -d myfile.txt` where the file
+    // path comes last.
     loop {
         match args.first().map(|s| s.as_str()) {
             Some("-u") | Some("--uri") => {
@@ -65,18 +106,28 @@ fn main() {
         }
     }
 
+    // Create the GTK application.  We request `HANDLES_COMMAND_LINE` so that our
+    // command line parsing callback is triggered even if another instance is
+    // already running.
     let app = Application::builder()
         .application_id(APP_ID)
         .flags(ApplicationFlags::HANDLES_COMMAND_LINE)
         .build();
 
+    // We handle command line invocation so that opening a file from the command
+    // line or from a file manager behaves the same.  This callback runs before
+    // the application is fully started.
     app.connect_command_line(move |app, cmd_line| {
         let argv = cmd_line.arguments();
+        // Collect the arguments provided by the shell.  The first value is the
+        // program name which we skip.
         let inputs: Vec<String> = argv
             .iter()
             .skip(1)
             .map(|s| s.to_string_lossy().into_owned())
             .collect();
+        // Honour `--help` when launched via the command line interface of an
+        // existing instance.
         if inputs.iter().any(|a| a == "-h" || a == "--help") {
             eprintln!("{}", USAGE);
             return 0;
@@ -97,10 +148,14 @@ fn main() {
                 _ => break,
             }
         }
+        // After stripping options, the next argument is the target file or URI
+        // that we should display.  If no such argument exists we print the usage
+        // message.
         if let Some(id) = items.first() {
             let uri = if raw {
                 id.clone()
             } else {
+                // Convert filesystem path to URI when --uri was not given.
                 gio::File::for_path(id).uri().to_string()
             };
             app.activate();
@@ -112,8 +167,13 @@ fn main() {
         }
     });
 
+    // When the application is launched without arguments we do nothing here; a
+    // window will only be shown once `connect_command_line` or `connect_open`
+    // triggers `build_ui`.
     app.connect_activate(|_| {});
 
+    // Support opening files via desktop integration.  The `GApplication::open`
+    // signal delivers URIs of files the user wants to inspect.
     app.connect_open(move |app, files, _| {
         if let Some(file) = files.first() {
             build_ui(app, file.uri().to_string(), debug_flag);
@@ -123,6 +183,9 @@ fn main() {
     app.run();
 }
 
+/// Construct and present the main application window for the given `uri`.
+/// The `debug` flag controls verbose logging of Tracker operations.  Most of
+/// the widget hierarchy is assembled here.
 fn build_ui(app: &Application, uri: String, debug: bool) {
     let window = ApplicationWindow::builder()
         .application(app)
@@ -134,6 +197,8 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
     add_common_actions(&window);
 
     let provider = CssProvider::new();
+    // Small embedded CSS snippet to style our grid and text views.  This keeps
+    // the UI tidy without needing an external stylesheet.
     let css = r#"
         grid#data-grid {
             background-color: transparent;
@@ -150,6 +215,8 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
         }
     "#;
     provider.load_from_data(css);
+    // Apply the CSS provider to the default display so the styles take effect
+    // application-wide.
     if let Some(display) = Display::default() {
         gtk::style_context_add_provider_for_display(
             &display,
@@ -158,12 +225,18 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
         );
     }
 
+    // Header bar shown at the top of the window.  We include standard close
+    // buttons so the window integrates nicely with the desktop environment.
     let header = HeaderBar::new();
     header.set_show_end_title_buttons(true);
 
+    // The header displays the title of the view.  It starts with a "Loading…"
+    // label which will be replaced once the SPARQL query finishes.
     let header_label = Label::new(Some("Loading…"));
     header.set_title_widget(Some(&header_label));
 
+    // Main grid used to display predicate/value pairs.  We avoid homogeneous
+    // columns so that long values can consume the remaining space.
     let grid = Grid::builder()
         .column_homogeneous(false)
         .hexpand(true)
@@ -173,22 +246,31 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
         .build();
     grid.set_widget_name("data-grid");
 
+    // The viewport ensures that the grid can be scrolled while keeping the CSS
+    // styling simple.
     let viewport = gtk::Viewport::builder()
         .scroll_to_focus(false)
         .child(&grid)
         .build();
 
+    // Put everything inside a scrolled window so large sets of metadata remain
+    // navigable.
     let scroll = gtk::ScrolledWindow::builder()
         .min_content_width(590)
         .min_content_height(400)
         .child(&viewport)
         .build();
 
+    // Adwaita's ToolbarView lets us stack a header and optional bottom bar on
+    // top of a scrolled content area.
     let toolbar = ToolbarView::new();
     toolbar.add_top_bar(&header);
 
+    // Store the table rows so that we can export them to CSV later.
     let table_data: Rc<RefCell<Vec<TableRow>>> = Rc::new(RefCell::new(Vec::new()));
 
+    // Simple bottom bar buttons for closing the window and copying/exporting
+    // data.  Each button gets its own handler.
     let close_button = Button::with_label("Close");
     let win_clone = window.clone();
     close_button.connect_clicked(move |_| {
@@ -197,6 +279,8 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
 
     let copy_button = Button::with_label("Copy");
     let data_clone = table_data.clone();
+    // Export the collected table rows as CSV and place the text on the
+    // clipboard so it can be pasted elsewhere.
     copy_button.connect_clicked(move |_| {
         let rows = data_clone.borrow();
         let mut wtr = WriterBuilder::new().has_headers(true).from_writer(vec![]);
@@ -224,6 +308,7 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
     let open_button = Button::with_label("Open");
     let win_for_action = window.clone();
     let uri_clone = uri.clone();
+    // Allow the user to open the current URI with the system default handler.
     open_button.connect_clicked(move |_| {
         gio::prelude::ActionGroupExt::activate_action(
             &win_for_action,
@@ -237,10 +322,14 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
     let win_parent = window.clone();
     let uri_bl = uri.clone();
     let debug_clone = debug;
+    // Show a secondary window listing incoming references to the current URI.
     backlinks_button.connect_clicked(move |_| {
         show_backlinks_window(&app_clone, &win_parent, uri_bl.clone(), debug_clone);
     });
 
+    // Pack the buttons into a horizontal box that forms the window's bottom
+    // bar. Spacing and margins keep the layout pleasant regardless of language
+    // direction.
     let bottom_box = GtkBox::new(Orientation::Horizontal, 0);
     bottom_box.set_spacing(5);
     bottom_box.set_halign(gtk::Align::End);
@@ -250,6 +339,8 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
     bottom_box.set_margin_bottom(6);
     bottom_box.append(&backlinks_button);
     bottom_box.append(&copy_button);
+    // Only show the "Open" button if the URI has a registered handler.  For
+    // example, some custom schemes might not be supported.
     if uri_has_handler(&uri).is_ok() {
         bottom_box.append(&open_button);
     }
@@ -267,6 +358,8 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
     let data_clone = table_data.clone();
     let uri_clone = uri.clone();
 
+    // Kick off the asynchronous SPARQL query.  We use `spawn_local` so the
+    // future runs on the main event loop without blocking the UI.
     glib::MainContext::default().spawn_local(async move {
         let (is_file_data_object, rows) =
             populate_grid(&app_clone, &window_clone, &grid_clone, &uri_clone, debug).await;
@@ -281,10 +374,15 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
         });
 
         if debug {
+            // When debugging we measure how long it takes until the results are
+            // actually painted on screen.  The frame clock lets us run a
+            // callback right after the next draw.
             if let Some(clock) = grid_clone.frame_clock() {
                 use std::cell::RefCell;
                 use gdk4::FrameClockPhase;
 
+                // We disconnect the signal after running once to avoid leaking
+                // handlers when multiple queries are performed.
                 let handler: Rc<RefCell<Option<glib::SignalHandlerId>>> =
                     Rc::new(RefCell::new(None));
                 let handler_clone = handler.clone();
@@ -305,6 +403,9 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
     });
 }
 
+/// Run a SPARQL query for `uri` and populate the provided `Grid` widget with
+/// the results.  Returns whether the node represents a `FileDataObject` as well
+/// as the vector of rows that were added to the grid.
 async fn populate_grid(
     app: &Application,
     window: &ApplicationWindow,
@@ -312,6 +413,8 @@ async fn populate_grid(
     uri: &str,
     debug: bool,
 ) -> (bool, Vec<TableRow>) {
+    // Remove any existing rows so the grid can be reused when navigating
+    // between nodes.
     while let Some(child) = grid.first_child() {
         grid.remove(&child);
     }
@@ -321,6 +424,8 @@ async fn populate_grid(
 
     let mut rows_vec = Vec::new();
 
+    // The first row always shows the URI of the node itself for quick copying
+    // and reference.
     let id_label = Label::new(Some("Identifier"));
     id_label.set_halign(gtk::Align::Start);
     id_label.set_valign(gtk::Align::Start);
@@ -361,6 +466,9 @@ async fn populate_grid(
     if debug {
         eprintln!("Connecting to Tracker miner for metadata…");
     }
+    // Connect to the Tracker Miner on the session bus.  This is where metadata
+    // for files is indexed.  Failure here usually means Tracker is not running
+    // or D-Bus is misconfigured.
     let conn = match SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None) {
         Ok(c) => c,
         Err(err) => {
@@ -381,6 +489,8 @@ async fn populate_grid(
         }
     };
 
+    // Build a SPARQL query that retrieves all predicate/value pairs for the
+    // given resource and also returns the datatype for each value.
     let sparql = format!(
         r#"
         SELECT DISTINCT ?pred ?obj (DATATYPE(?obj) AS ?dtype) WHERE {{
@@ -412,11 +522,19 @@ async fn populate_grid(
         }
     };
 
+    // We collect results into a map so that multiple objects for the same
+    // predicate are grouped together. `order` preserves the original ordering
+    // of predicates from the query results.
     let mut order = Vec::new();
     let mut map: HashMap<String, Vec<(String, String)>> = HashMap::new();
 
+    // Some UI text changes depending on whether the node is a tracked file or
+    // an arbitrary resource.  We detect this by checking for the
+    // `nfo:FileDataObject` type while iterating the results.
     let mut is_file_data_object = false;
 
+    // Iterate over the query cursor asynchronously.  Each row contains the
+    // predicate URI, object string and datatype URI if any.
     while cursor.next_future().await.unwrap_or(false) {
         let pred = cursor.string(0).unwrap_or_default().to_string();
         let obj = cursor.string(1).unwrap_or_default().to_string();
@@ -462,6 +580,9 @@ async fn populate_grid(
                     let pred_clone = pred.clone();
                     let gesture = gtk::GestureClick::new();
                     gesture.set_button(1);
+                    // When the user clicks on a predicate label we lazily
+                    // query Tracker for any `rdfs:comment` attached to that
+                    // predicate and show it as a tooltip.
                     gesture.connect_pressed(move |_, _, _, _| {
                         if let Some(comment) = fetch_comment(&pred_clone) {
                             let tip = ellipsize(&comment, COMMENT_TOOLTIP_MAX_CHARS);
@@ -492,6 +613,8 @@ async fn populate_grid(
                 };
                 let native_str = obj.clone();
 
+                // The widget used to display the value depends on whether the
+                // value looks like a URI or contains newlines.
                 let widget: gtk::Widget = if dtype.is_empty() {
                     let lbl_link = Label::new(None);
                     let escaped = glib::markup_escape_text(obj);
@@ -522,6 +645,8 @@ async fn populate_grid(
 
                     lbl_link.upcast()
                 } else {
+                    // Multiline literals are shown in a readonly TextView so
+                    // line wrapping behaves nicely.
                     if obj.contains('\n') {
                         let txt = TextView::new();
                         txt.set_editable(false);
@@ -583,6 +708,8 @@ async fn populate_grid(
     (is_file_data_object, rows_vec)
 }
 
+/// Convert a predicate or URI fragment into a human readable label.  This is a
+/// best effort heuristic that splits camel case words and capitalizes them.
 fn friendly_label(uri: &str) -> String {
     let trimmed = uri.trim_end_matches(&['#', '/'][..]);
     let last = trimmed.rsplit(&['#', '/'][..]).next().unwrap_or(trimmed);
@@ -612,6 +739,7 @@ fn friendly_label(uri: &str) -> String {
         .join(" ")
 }
 
+/// Format a literal value for display based on its datatype.
 fn friendly_value(obj: &str, dtype: &str) -> String {
     if dtype == XSD_DATETYPE {
         if let Ok(dt) = glib::DateTime::from_iso8601(obj, None)
@@ -624,6 +752,8 @@ fn friendly_value(obj: &str, dtype: &str) -> String {
     obj.to_string()
 }
 
+/// Truncate `s` to at most `max_chars` Unicode characters, appending an
+/// ellipsis if truncation occurred.
 fn ellipsize(s: &str, max_chars: usize) -> String {
     let mut count = 0;
     let mut result = String::new();
@@ -642,13 +772,20 @@ fn ellipsize(s: &str, max_chars: usize) -> String {
     }
 }
 
+/// Very small helper that tries to parse the string as a URI.  It is used to
+/// decide whether clicking should open another view or simply display text.
 fn looks_like_uri(s: &str) -> bool {
     Url::parse(s).is_ok()
 }
 
+/// Check whether there is an application capable of opening the given URI.
+/// Returns `Ok(())` if a handler exists or an error string describing the
+/// problem otherwise.
 fn uri_has_handler(uri: &str) -> Result<(), String> {
     if let Ok(url) = Url::parse(uri) {
         if url.scheme() == "file" {
+            // For file URIs we look up the MIME type and check if there is a
+            // default application registered for it.
             if let Ok(path) = url.to_file_path() {
                 if let Some(p) = path.to_str() {
                     let (mime, _) = gio::content_type_guess(Some(p), b"");
@@ -658,6 +795,8 @@ fn uri_has_handler(uri: &str) -> Result<(), String> {
                 }
             }
         } else if gio::AppInfo::default_for_uri_scheme(url.scheme()).is_none() {
+            // Non-file URIs are checked via the scheme.  If no handler exists,
+            // we return an error message that can be shown to the user.
             return Err(format!(
                 "No application available for scheme \"{}\".",
                 url.scheme()
@@ -667,7 +806,11 @@ fn uri_has_handler(uri: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Install a handful of `Gio::SimpleAction` objects on the given window.  These
+/// actions implement clipboard copy functionality and opening URIs with the
+/// default system handler.
 fn add_common_actions(window: &ApplicationWindow) {
+    // `copy-displayed-value` copies exactly what the user sees in the UI.
     let copy_disp = gio::SimpleAction::new("copy-displayed-value", Some(&VariantTy::STRING));
     copy_disp.connect_activate(move |_action, param| {
         if let Some(v) = param {
@@ -681,6 +824,7 @@ fn add_common_actions(window: &ApplicationWindow) {
     });
     window.add_action(&copy_disp);
 
+    // `copy-native-value` copies the raw value returned by Tracker.
     let copy_nat = gio::SimpleAction::new("copy-native-value", Some(&VariantTy::STRING));
     copy_nat.connect_activate(move |_action, param| {
         if let Some(v) = param {
@@ -695,10 +839,12 @@ fn add_common_actions(window: &ApplicationWindow) {
     window.add_action(&copy_nat);
 
     let win_for_uri = window.clone();
+    // `open-uri` asks the desktop to launch the default handler for a URI.
     let open_uri_action = gio::SimpleAction::new("open-uri", Some(&VariantTy::STRING));
     open_uri_action.connect_activate(move |_action, param| {
         if let Some(v) = param {
             if let Some(uri) = v.str() {
+                // In case launching fails we show an informative dialog.
                 let report = |msg: String| {
                     let dialog = gtk::MessageDialog::builder()
                         .transient_for(&win_for_uri)
@@ -728,10 +874,13 @@ fn add_common_actions(window: &ApplicationWindow) {
     window.add_action(&open_uri_action);
 }
 
+/// Attach a context menu to `widget` that offers to copy the displayed value,
+/// the native value and, when appropriate, to open the URI externally.
 fn add_copy_menu<W>(widget: &W, displayed: &str, native: &str, disp_label: &str, nat_label: &str)
 where
     W: IsA<gtk::Widget> + Clone + 'static,
 {
+    // Use a right-click gesture to trigger the popover menu.
     let gesture = gtk::GestureClick::new();
     gesture.set_button(3);
     gesture.set_exclusive(true);
@@ -757,6 +906,8 @@ where
         copy_nat_item.set_attribute_value("target", Some(&nat_variant));
         menu_model.append_item(&copy_nat_item);
 
+        // Offer an "Open Externally" item only when the value looks like a URI
+        // and a handler exists.
         if looks_like_uri(&native_clone) && uri_has_handler(&native_clone).is_ok() {
             let open_item = gio::MenuItem::new(Some("Open Externally"), Some("win.open-uri"));
             let uri_variant = Variant::from(native_clone.as_str());
@@ -793,6 +944,8 @@ where
     widget.add_controller(gesture);
 }
 
+/// Create a secondary window displaying all subjects that reference the given
+/// `uri`.  This is opened when the user clicks the "Backlinks" button.
 fn show_backlinks_window(app: &Application, parent: &ApplicationWindow, uri: String, debug: bool) {
     let window = ApplicationWindow::builder()
         .application(app)
@@ -863,11 +1016,15 @@ fn show_backlinks_window(app: &Application, parent: &ApplicationWindow, uri: Str
     });
 }
 
+/// Populate the backlinks grid with SPARQL query results.  Each row lists a
+/// subject and predicate that point to the current resource.
 async fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri: &str, debug: bool) {
+    // Clear any previous results from the grid.
     while let Some(child) = grid.first_child() {
         grid.remove(&child);
     }
 
+    // Connect to Tracker so we can query who references the given URI.
     let conn = match SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None) {
         Ok(c) => c,
         Err(err) => {
@@ -888,6 +1045,7 @@ async fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, 
         }
     };
 
+    // Query for all subjects and predicates pointing at our node.
     let sparql = format!("SELECT DISTINCT ?s ?p WHERE {{ ?s ?p <{uri}> }}", uri = uri);
     if debug {
         eprintln!("Running SPARQL query: {sparql}");
@@ -913,6 +1071,8 @@ async fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, 
     };
 
     let mut row = 0;
+    // Each row of the result contains a subject and predicate referencing the
+    // original URI.  We display these one per row.
     while cursor.next_future().await.unwrap_or(false) {
         let subj = cursor.string(0).unwrap_or_default().to_string();
         let pred = cursor.string(1).unwrap_or_default().to_string();
@@ -995,6 +1155,8 @@ async fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, 
     }
 }
 
+/// Fetch the `rdfs:comment` for a predicate URI.  Returns `None` if no comment
+/// could be retrieved.
 fn fetch_comment(predicate: &str) -> Option<String> {
     let conn =
         SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None).ok()?;
