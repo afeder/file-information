@@ -137,19 +137,20 @@ if ! xdotool search --name "File Information" >/dev/null 2>&1; then
     exit 1
 fi
 
-window_id=$(xdotool search --name "File Information" | head -n 1)
+main_window_id=$(xdotool search --name "File Information" | head -n 1)
+log "Main window ID acquired: $main_window_id."
 
 # Wait for the window to be fully drawn before taking a screenshot. The window
 # can exist before it has finished rendering, resulting in a blank capture. Use
 # xwininfo to wait until the map state is "IsViewable".
 log "Waiting up to 10 seconds for the main window to become viewable..."
 for i in {1..100}; do
-    if xwininfo -id "$window_id" | grep -q "IsViewable"; then
+    if xwininfo -id "$main_window_id" | grep -q "IsViewable"; then
         break
     fi
     sleep 0.1
 done
-if ! xwininfo -id "$window_id" | grep -q "IsViewable"; then
+if ! xwininfo -id "$main_window_id" | grep -q "IsViewable"; then
     error "Timed out waiting for the main window to become viewable."
     exit 1
 fi
@@ -169,8 +170,8 @@ if ! $ready; then
     exit 1
 fi
 
-log "Saving screenshot of window $window_id on display $XVFB_DISPLAY to $MAIN_SCREENSHOT..."
-import -display "$XVFB_DISPLAY" -window "$window_id" "$MAIN_SCREENSHOT"
+log "Saving screenshot of window $main_window_id on display $XVFB_DISPLAY to $MAIN_SCREENSHOT..."
+import -display "$XVFB_DISPLAY" -window "$main_window_id" "$MAIN_SCREENSHOT"
 log "Main window screenshot saved to $MAIN_SCREENSHOT."
 
 # Mask variable regions that can affect the MD5 digest by overlaying black
@@ -188,8 +189,8 @@ digest=$(convert "$MAIN_MASKED_SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
 log "Main window screenshot MD5 digest: $digest."
 
 # Print geometry using the captured window ID.
-log "Acquiring window geometry for window $window_id..."
-geom=$(xdotool getwindowgeometry --shell "$window_id")
+log "Acquiring window geometry for window $main_window_id..."
+geom=$(xdotool getwindowgeometry --shell "$main_window_id")
 eval "$geom"
 log "Window geometry: X=$X Y=$Y WIDTH=$WIDTH HEIGHT=$HEIGHT."
 
@@ -218,6 +219,7 @@ if ! xdotool search --name "Backlinks" >/dev/null 2>&1; then
 fi
 
 backlinks_window_id=$(xdotool search --name "Backlinks" | head -n 1)
+log "Backlinks window ID acquired: $backlinks_window_id."
 
 log "Waiting up to 10 seconds for query results to be displayed..."
 back_ready=false
@@ -286,7 +288,7 @@ run_and_time xdotool mousemove "$main_close_x" "$main_close_y" click 1
 log "Waiting up to 10 seconds for the main window to close..."
 closed=false
 for i in {1..100}; do
-    if ! xwininfo -id "$window_id" >/dev/null 2>&1; then
+    if ! xwininfo -id "$main_window_id" >/dev/null 2>&1; then
         closed=true
         break
     fi
