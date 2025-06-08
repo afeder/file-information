@@ -77,6 +77,7 @@ else
 fi
 
 # Create the directory and test file so Tracker can index it.
+log "Creating test file $TEST_FILE..."
 mkdir -p "$TEST_DIR"
 if [ ! -f "$TEST_FILE" ]; then
     echo "The quick brown fox jumps over the lazy dog." > "$TEST_FILE"
