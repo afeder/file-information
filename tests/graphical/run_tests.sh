@@ -192,7 +192,7 @@ convert "$MAIN_SCREENSHOT" \
 # Compute and log the MD5 digest of the raw screenshot so it can be compared
 # against known values.
 main_window_digest=$(convert "$MAIN_SCREENSHOT_MASKED" rgba:- | md5sum | awk '{print $1}')
-log "Main window screenshot MD5 digest: $main_window_digest."
+log "Masked main window screenshot MD5 digest: $main_window_digest."
 
 # Compute MD5 digest of the stored reference screenshot for comparison.
 convert "$MAIN_SCREENSHOT_STORED" \
@@ -203,9 +203,9 @@ convert "$MAIN_SCREENSHOT_STORED" \
     "$MAIN_SCREENSHOT_STORED_MASKED"
 main_window_stored_digest=$(convert "$MAIN_SCREENSHOT_STORED_MASKED" rgba:- | md5sum | awk '{print $1}')
 if [ "$main_window_digest" = "$main_window_stored_digest" ]; then
-    log "Main window screenshot matches the stored reference."
+    log "Masked main window screenshot matches the stored reference."
 else
-    error "Main window screenshot does not match the stored reference."
+    error "Masked main window screenshot does not match the stored reference."
 fi
 
 # Print geometry using the captured window ID.
@@ -265,16 +265,16 @@ convert "$BACKLINKS_SCREENSHOT" \
     "$BACKLINKS_SCREENSHOT_MASKED"
 
 backlinks_window_digest=$(convert "$BACKLINKS_SCREENSHOT_MASKED" rgba:- | md5sum | awk '{print $1}')
-log "Backlinks window screenshot MD5 digest: $backlinks_window_digest."
+log "Masked Backlinks window screenshot MD5 digest: $backlinks_window_digest."
 
 convert "$BACKLINKS_SCREENSHOT_STORED" \
     -fill black -draw "rectangle 11,57 310,70" \
     "$BACKLINKS_SCREENSHOT_STORED_MASKED"
 backlinks_window_stored_digest=$(convert "$BACKLINKS_SCREENSHOT_STORED_MASKED" rgba:- | md5sum | awk '{print $1}')
 if [ "$backlinks_window_digest" = "$backlinks_window_stored_digest" ]; then
-    log "Backlinks window screenshot matches the stored reference."
+    log "Masked Backlinks window screenshot matches the stored reference."
 else
-    error "Backlinks window screenshot does not match the stored reference."
+    error "Masked Backlinks window screenshot does not match the stored reference."
 fi
 
 log "Acquiring window geometry for window $backlinks_window_id..."
