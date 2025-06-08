@@ -54,6 +54,9 @@ if [ ! -x "$app_path" ]; then
     else
         cargo build
     fi
+    echo "Build complete. Binary located at $app_path" >&2
+else
+    echo "Using existing build at $app_path" >&2
 fi
 
 # Create the directory and test file so Tracker can index it.
@@ -65,6 +68,7 @@ fi
 echo "Launching Xvfb on display $XVFB_DISPLAY and piping output to $XVFB_LOG..."
 Xvfb "$XVFB_DISPLAY" -screen 0 1024x768x24 >"$XVFB_LOG" 2>&1 &
 xvfb_pid=$!
+echo "Xvfb started with PID $xvfb_pid" >&2
 
 export DISPLAY="$XVFB_DISPLAY"
 export GDK_BACKEND=x11
@@ -103,6 +107,7 @@ echo "Tracker metadata for $TEST_FILE:" >&2
 rm -f "$APP_LOG"
 "$app_path" --debug "$TEST_FILE" >"$APP_LOG" 2>&1 &
 app_pid=$!
+echo "Application started with PID $app_pid. Logs at $APP_LOG" >&2
 
 echo "Waiting up to 10 seconds for the File Information window to be created..." >&2
 for i in {1..100}; do
@@ -150,6 +155,7 @@ fi
 
 echo "Saving screenshot of window $window_id on display $XVFB_DISPLAY to $MAIN_SCREENSHOT..."
 import -display "$XVFB_DISPLAY" -window "$window_id" "$MAIN_SCREENSHOT"
+echo "Main screenshot saved to $MAIN_SCREENSHOT" >&2
 
 # Mask variable regions that can affect the MD5 digest by overlaying black
 # rectangles on the captured image.
@@ -213,6 +219,7 @@ fi
 
 echo "Saving screenshot of window $back_window_id on display $XVFB_DISPLAY to $BACKLINKS_SCREENSHOT..."
 import -display "$XVFB_DISPLAY" -window "$back_window_id" "$BACKLINKS_SCREENSHOT"
+echo "Backlinks screenshot saved to $BACKLINKS_SCREENSHOT" >&2
 
 # Mask variable regions in the Backlinks screenshot.
 convert "$BACKLINKS_SCREENSHOT" \
