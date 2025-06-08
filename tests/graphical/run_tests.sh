@@ -220,6 +220,7 @@ geom=$(xdotool getwindowgeometry --shell "$back_window_id")
 eval "$geom"
 echo "Backlinks window geometry: X=$X Y=$Y WIDTH=$WIDTH HEIGHT=$HEIGHT" >&2
 
+# Close the Backlinks window.
 close_x=$((X + WIDTH - 20))
 close_y=$((Y + HEIGHT - 20))
 xdotool mousemove --sync "$close_x" "$close_y" click 1
@@ -233,8 +234,10 @@ for i in {1..100}; do
     fi
     sleep 0.1
 done
-if ! $closed; then
-    echo "Backlinks window did not close." >&2
+if $closed; then
+    echo "Backlinks window closed successfully." >&2
+else
+    echo "Backlinks window failed to close." >&2
     exit 1
 fi
 
