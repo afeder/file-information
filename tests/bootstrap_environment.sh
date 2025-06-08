@@ -1,6 +1,25 @@
 # This script is designed to bootstrap the environment for testing. It assumes a
 # minimal Debian/Ubuntu base environment.
 
+#!/bin/sh
+
+# Abort if it looks like we're running on a regular desktop system unless the
+# user explicitly overrides.  We check common environment variables that are
+# present in desktop sessions.
+force=0
+for arg in "$@"; do
+    case "$arg" in
+        -f|--force)
+            force=1
+            ;;
+    esac
+done
+
+if [ "$force" = 0 ] && { [ -n "$XDG_CURRENT_DESKTOP" ] || [ -n "$DESKTOP_SESSION" ] || [ -n "$DISPLAY" ]; }; then
+    echo "Refusing to run in a desktop environment. Use -f to force." >&2
+    exit 1
+fi
+
 apt-get update
 
 # Install main app dependencies.
