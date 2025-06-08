@@ -3,13 +3,13 @@ set -euo pipefail
 
 XVFB_DISPLAY=:99
 MAIN_SCREENSHOT="/tmp/file_information_main_screenshot.png"
-MAIN_MASKED_SCREENSHOT="/tmp/file_information_main_screenshot_masked.png"
+MAIN_SCREENSHOT_MASKED="/tmp/file_information_main_screenshot_masked.png"
+MAIN_SCREENSHOT_STORED="tests/graphical/images/file_information_main_screenshot.png"
+MAIN_SCREENSHOT_STORED_MASKED="/tmp/file_information_main_screenshot_masked_stored.png"
 BACKLINKS_SCREENSHOT="/tmp/file_information_backlinks_screenshot.png"
-BACKLINKS_MASKED_SCREENSHOT="/tmp/file_information_backlinks_screenshot_masked.png"
-STORED_MAIN_SCREENSHOT="tests/graphical/images/file_information_main_screenshot.png"
-STORED_BACKLINKS_SCREENSHOT="tests/graphical/images/file_information_backlinks_screenshot.png"
-MAIN_STORED_MASKED="/tmp/file_information_main_screenshot_masked_stored.png"
-BACKLINKS_STORED_MASKED="/tmp/file_information_backlinks_screenshot_masked_stored.png"
+BACKLINKS_SCREENSHOT_MASKED="/tmp/file_information_backlinks_screenshot_masked.png"
+BACKLINKS_SCREENSHOT_STORED="tests/graphical/images/file_information_backlinks_screenshot.png"
+BACKLINKS_SCREENSHOT_STORED_MASKED="/tmp/file_information_backlinks_screenshot_masked_stored.png"
 TEST_DIR="$HOME/tmp"
 TEST_FILE="$TEST_DIR/testfile.txt"
 XVFB_LOG="/tmp/xvfb.log"
@@ -187,21 +187,21 @@ convert "$MAIN_SCREENSHOT" \
     -fill black -draw "rectangle 176,180 310,193" \
     -fill black -draw "rectangle 176,205 183,218" \
     -fill black -draw "rectangle 11,230 568,445" \
-    "$MAIN_MASKED_SCREENSHOT"
+    "$MAIN_SCREENSHOT_MASKED"
 
 # Compute and log the MD5 digest of the raw screenshot so it can be compared
 # against known values.
-main_window_digest=$(convert "$MAIN_MASKED_SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
+main_window_digest=$(convert "$MAIN_SCREENSHOT_MASKED" rgba:- | md5sum | awk '{print $1}')
 log "Main window screenshot MD5 digest: $main_window_digest."
 
 # Compute MD5 digest of the stored reference screenshot for comparison.
-convert "$STORED_MAIN_SCREENSHOT" \
+convert "$MAIN_SCREENSHOT_STORED" \
     -fill black -draw "rectangle 176,130 310,143" \
     -fill black -draw "rectangle 176,180 310,193" \
     -fill black -draw "rectangle 176,205 183,218" \
     -fill black -draw "rectangle 11,230 568,445" \
-    "$MAIN_STORED_MASKED"
-main_window_stored_digest=$(convert "$MAIN_STORED_MASKED" rgba:- | md5sum | awk '{print $1}')
+    "$MAIN_SCREENSHOT_STORED_MASKED"
+main_window_stored_digest=$(convert "$MAIN_SCREENSHOT_STORED_MASKED" rgba:- | md5sum | awk '{print $1}')
 if [ "$main_window_digest" = "$main_window_stored_digest" ]; then
     log "Main window screenshot matches the stored reference."
 else
@@ -262,15 +262,15 @@ log "Backlinks window screenshot saved to $BACKLINKS_SCREENSHOT."
 # Mask known variable regions in the Backlinks window screenshot.
 convert "$BACKLINKS_SCREENSHOT" \
     -fill black -draw "rectangle 11,57 310,70" \
-    "$BACKLINKS_MASKED_SCREENSHOT"
+    "$BACKLINKS_SCREENSHOT_MASKED"
 
-backlinks_window_digest=$(convert "$BACKLINKS_MASKED_SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
+backlinks_window_digest=$(convert "$BACKLINKS_SCREENSHOT_MASKED" rgba:- | md5sum | awk '{print $1}')
 log "Backlinks window screenshot MD5 digest: $backlinks_window_digest."
 
-convert "$STORED_BACKLINKS_SCREENSHOT" \
+convert "$BACKLINKS_SCREENSHOT_STORED" \
     -fill black -draw "rectangle 11,57 310,70" \
-    "$BACKLINKS_STORED_MASKED"
-backlinks_window_stored_digest=$(convert "$BACKLINKS_STORED_MASKED" rgba:- | md5sum | awk '{print $1}')
+    "$BACKLINKS_SCREENSHOT_STORED_MASKED"
+backlinks_window_stored_digest=$(convert "$BACKLINKS_SCREENSHOT_STORED_MASKED" rgba:- | md5sum | awk '{print $1}')
 if [ "$backlinks_window_digest" = "$backlinks_window_stored_digest" ]; then
     log "Backlinks window screenshot matches the stored reference."
 else
