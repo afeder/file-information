@@ -7,7 +7,8 @@ MAIN_MASKED_SCREENSHOT="/tmp/file_information_main_screenshot_masked.png"
 BACKLINKS_SCREENSHOT="/tmp/file_information_backlinks_screenshot.png"
 BACKLINKS_MASKED_SCREENSHOT="/tmp/file_information_backlinks_screenshot_masked.png"
 TEST_DIR="$HOME/tmp"
-TEST_FILE="$TEST_DIR/testfile.txt"
+TEST_SUBDIR="$TEST_DIR/subdir"
+TEST_FILE="$TEST_SUBDIR/testfile.txt"
 XVFB_LOG="/tmp/xvfb.log"
 APP_LOG="/tmp/file_information_app.log"
 
@@ -77,7 +78,7 @@ else
 fi
 
 # Create the directory and test file so Tracker can index it.
-mkdir -p "$TEST_DIR"
+mkdir -p "$TEST_SUBDIR"
 if [ ! -f "$TEST_FILE" ]; then
     echo "The quick brown fox jumps over the lazy dog." > "$TEST_FILE"
 fi
