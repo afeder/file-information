@@ -44,7 +44,7 @@ if [ ! -x "$app_path" ]; then
     fi
 fi
 
-# Create the directory and test file so Tracker can index it
+# Create the directory and test file so Tracker can index it.
 mkdir -p "$TEST_DIR"
 if [ ! -f "$TEST_FILE" ]; then
     echo "The quick brown fox jumps over the lazy dog." > "$TEST_FILE"
@@ -70,7 +70,7 @@ echo "Initiating Tracker indexing of $TEST_DIR..."
 tracker3 daemon -s >/dev/null
 tracker3 index --add "$TEST_DIR" >/dev/null
 
-# Wait for the test file to be indexed before launching the application
+# Wait for the test file to be indexed before launching the application.
 echo "Waiting up to 60 seconds for Tracker to index $TEST_FILE..." >&2
 for i in {1..600}; do
     if ! tracker3 info "$TEST_FILE" 2>&1 | grep -q "No metadata available"; then
@@ -83,7 +83,7 @@ if tracker3 info "$TEST_FILE" 2>&1 | grep -q "No metadata available"; then
     exit 1
 fi
 
-# Query Tracker for metadata about the file to be shown in the application
+# Query Tracker for metadata about the file to be shown in the application.
 echo "Tracker metadata for $TEST_FILE:" >&2
 (tracker3 info "$TEST_FILE" || true) | head -n 5
 
@@ -153,18 +153,18 @@ convert "$SCREENSHOT" \
 digest=$(convert "$MASKED_SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
 echo "Screenshot MD5 digest: $digest" >&2
 
-# Print geometry using the captured window ID
+# Print geometry using the captured window ID.
 echo "Acquiring window geometry for window $window_id..."
 geom=$(xdotool getwindowgeometry --shell "$window_id")
 eval "$geom"
 echo "Window geometry: X=$X Y=$Y WIDTH=$WIDTH HEIGHT=$HEIGHT" >&2
 
-# Click the "Close" button near the lower-right corner of the window
+# Click the "Close" button near the lower-right corner of the window.
 close_x=$((X + WIDTH - 20))
 close_y=$((Y + HEIGHT - 20))
 xdotool mousemove --sync "$close_x" "$close_y" click 1
 
-# Check if the window closed successfully
+# Check if the window closed successfully.
 echo "Waiting up to 10 seconds for the window to close..." >&2
 closed=false
 for i in {1..100}; do
