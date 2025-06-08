@@ -102,7 +102,7 @@ fi
 log "Initiating Tracker indexing of $TEST_DIR..."
 # Let Tracker index the test directory.
 tracker3 daemon -s >/dev/null
-tracker3 index --add "$TEST_DIR" >/dev/null
+tracker3 index --add --recursive "$TEST_DIR" >/dev/null
 
 # Wait for the test file to be indexed before launching the application.
 log "Waiting up to 60 seconds for Tracker to index $TEST_FILE..."
