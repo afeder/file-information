@@ -1,6 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
+# ANSI color codes for log messages.
+GREEN="\033[1;32m"
+YELLOW="\033[1;33m"
+RED="\033[1;31m"
+RESET="\033[0m"
+
+# Log a message with a timestamp and colored text.
+log() {
+    printf "%b[%s]%b %b%s%b\n" "$GREEN" "$(date '+%H:%M:%S')" "$RESET" "$YELLOW" "$*" "$RESET" >&2
+}
+
 # Helper to measure command duration in milliseconds.
 run_and_time() {
     local start end duration
@@ -8,7 +19,7 @@ run_and_time() {
     "$@"
     end=$(date +%s%N)
     duration=$(( (end - start) / 1000000 ))
-    echo "Command '$*' took ${duration} ms." >&2
+    log "Command '$*' took ${duration} ms."
 }
 
 XVFB_DISPLAY=:99
@@ -47,16 +58,16 @@ else
     app_path="target/debug/file-information"
 fi
 
-echo "Building the application..."
+log "Building the application..."
 if [ ! -x "$app_path" ]; then
     if $release; then
         cargo build --release
     else
         cargo build
     fi
-    echo "Build complete. Binary located at $app_path." >&2
+    log "Build complete. Binary located at $app_path."
 else
-    echo "Using existing build at $app_path." >&2
+    log "Using existing build at $app_path."
 fi
 
 # Create the directory and test file so Tracker can index it.
@@ -65,10 +76,10 @@ if [ ! -f "$TEST_FILE" ]; then
     echo "The quick brown fox jumps over the lazy dog." > "$TEST_FILE"
 fi
 
-echo "Launching Xvfb on display $XVFB_DISPLAY and piping output to $XVFB_LOG..."
+log "Launching Xvfb on display $XVFB_DISPLAY and piping output to $XVFB_LOG..."
 Xvfb "$XVFB_DISPLAY" -screen 0 1024x768x24 >"$XVFB_LOG" 2>&1 &
 xvfb_pid=$!
-echo "Xvfb started with PID $xvfb_pid." >&2
+log "Xvfb started with PID $xvfb_pid."
 
 export DISPLAY="$XVFB_DISPLAY"
 export GDK_BACKEND=x11
@@ -81,13 +92,13 @@ if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
     export DBUS_SESSION_BUS_ADDRESS="$addr"
 fi
 
-echo "Initiating Tracker indexing of $TEST_DIR..."
+log "Initiating Tracker indexing of $TEST_DIR..."
 # Let Tracker index the test directory.
 tracker3 daemon -s >/dev/null
 tracker3 index --add "$TEST_DIR" >/dev/null
 
 # Wait for the test file to be indexed before launching the application.
-echo "Waiting up to 60 seconds for Tracker to index $TEST_FILE..." >&2
+log "Waiting up to 60 seconds for Tracker to index $TEST_FILE..."
 for i in {1..600}; do
     if ! tracker3 info "$TEST_FILE" 2>&1 | grep -q "No metadata available"; then
         break
@@ -95,21 +106,21 @@ for i in {1..600}; do
     sleep 0.1
 done
 if tracker3 info "$TEST_FILE" 2>&1 | grep -q "No metadata available"; then
-    echo "Timed out waiting for Tracker to index $TEST_FILE." >&2
+    log "Timed out waiting for Tracker to index $TEST_FILE."
     exit 1
 fi
 
 # Query Tracker for metadata about the file to be shown in the application.
-echo "Tracker metadata for $TEST_FILE:" >&2
+log "Tracker metadata for $TEST_FILE:"
 (tracker3 info "$TEST_FILE" || true) | head -n 5
 
 
 rm -f "$APP_LOG"
 "$app_path" --debug "$TEST_FILE" >"$APP_LOG" 2>&1 &
 app_pid=$!
-echo "Application started with PID $app_pid; logging to $APP_LOG." >&2
+log "Application started with PID $app_pid; logging to $APP_LOG."
 
-echo "Waiting up to 10 seconds for the main window to be created..." >&2
+log "Waiting up to 10 seconds for the main window to be created..."
 for i in {1..100}; do
     if xdotool search --name "File Information" >/dev/null 2>&1; then
         break
@@ -117,7 +128,7 @@ for i in {1..100}; do
     sleep 0.1
 done
 if ! xdotool search --name "File Information" >/dev/null 2>&1; then
-    echo "Timed out waiting for the main window to be created." >&2
+    log "Timed out waiting for the main window to be created."
     exit 1
 fi
 
@@ -126,7 +137,7 @@ window_id=$(xdotool search --name "File Information" | head -n 1)
 # Wait for the window to be fully drawn before taking a screenshot. The window
 # can exist before it has finished rendering, resulting in a blank capture. Use
 # xwininfo to wait until the map state is "IsViewable".
-echo "Waiting up to 10 seconds for the main window to become viewable..." >&2
+log "Waiting up to 10 seconds for the main window to become viewable..."
 for i in {1..100}; do
     if xwininfo -id "$window_id" | grep -q "IsViewable"; then
         break
@@ -134,11 +145,11 @@ for i in {1..100}; do
     sleep 0.1
 done
 if ! xwininfo -id "$window_id" | grep -q "IsViewable"; then
-    echo "Timed out waiting for the main window to become viewable." >&2
+    log "Timed out waiting for the main window to become viewable."
     exit 1
 fi
 
-echo "Waiting up to 10 seconds for query results to be displayed..." >&2
+log "Waiting up to 10 seconds for query results to be displayed..."
 ready=false
 # Poll for the structured debug message that indicates results are visible.
 for i in {1..100}; do
@@ -149,13 +160,13 @@ for i in {1..100}; do
     sleep 0.1
 done
 if ! $ready; then
-    echo "Timed out waiting for query results to be displayed." >&2
+    log "Timed out waiting for query results to be displayed."
     exit 1
 fi
 
-echo "Saving screenshot of window $window_id on display $XVFB_DISPLAY to $MAIN_SCREENSHOT..."
+log "Saving screenshot of window $window_id on display $XVFB_DISPLAY to $MAIN_SCREENSHOT..."
 import -display "$XVFB_DISPLAY" -window "$window_id" "$MAIN_SCREENSHOT"
-echo "Main window screenshot saved to $MAIN_SCREENSHOT." >&2
+log "Main window screenshot saved to $MAIN_SCREENSHOT."
 
 # Mask variable regions that can affect the MD5 digest by overlaying black
 # rectangles on the captured image.
@@ -169,13 +180,13 @@ convert "$MAIN_SCREENSHOT" \
 # Compute and log the MD5 digest of the raw screenshot so it can be compared
 # against known values.
 digest=$(convert "$MAIN_MASKED_SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
-echo "Main window screenshot MD5 digest: $digest." >&2
+log "Main window screenshot MD5 digest: $digest."
 
 # Print geometry using the captured window ID.
-echo "Acquiring window geometry for window $window_id..."
+log "Acquiring window geometry for window $window_id..."
 geom=$(xdotool getwindowgeometry --shell "$window_id")
 eval "$geom"
-echo "Window geometry: X=$X Y=$Y WIDTH=$WIDTH HEIGHT=$HEIGHT." >&2
+log "Window geometry: X=$X Y=$Y WIDTH=$WIDTH HEIGHT=$HEIGHT."
 
 # Save main window geometry for later interactions.
 main_X=$X
@@ -189,7 +200,7 @@ backlinks_x=$((main_X + main_WIDTH - 270))
 backlinks_y=$((main_Y + main_HEIGHT - 20))
 run_and_time xdotool mousemove --sync "$backlinks_x" "$backlinks_y" click 1
 
-echo "Waiting up to 10 seconds for the Backlinks window to be created..." >&2
+log "Waiting up to 10 seconds for the Backlinks window to be created..."
 for i in {1..100}; do
     if xdotool search --name "Backlinks" >/dev/null 2>&1; then
         break
@@ -197,13 +208,13 @@ for i in {1..100}; do
     sleep 0.1
 done
 if ! xdotool search --name "Backlinks" >/dev/null 2>&1; then
-    echo "Timed out waiting for the Backlinks window to be created." >&2
+    log "Timed out waiting for the Backlinks window to be created."
     exit 1
 fi
 
 backlinks_window_id=$(xdotool search --name "Backlinks" | head -n 1)
 
-echo "Waiting up to 10 seconds for query results to be displayed..." >&2
+log "Waiting up to 10 seconds for query results to be displayed..."
 back_ready=false
 for i in {1..100}; do
     if grep -q "Backlinks query returned" "$APP_LOG"; then
@@ -213,13 +224,13 @@ for i in {1..100}; do
     sleep 0.1
 done
 if ! $back_ready; then
-    echo "Timed out waiting for query results to be displayed." >&2
+    log "Timed out waiting for query results to be displayed."
     exit 1
 fi
 
-echo "Saving screenshot of window $backlinks_window_id on display $XVFB_DISPLAY to $BACKLINKS_SCREENSHOT..."
+log "Saving screenshot of window $backlinks_window_id on display $XVFB_DISPLAY to $BACKLINKS_SCREENSHOT..."
 import -display "$XVFB_DISPLAY" -window "$backlinks_window_id" "$BACKLINKS_SCREENSHOT"
-echo "Backlinks window screenshot saved to $BACKLINKS_SCREENSHOT." >&2
+log "Backlinks window screenshot saved to $BACKLINKS_SCREENSHOT."
 
 # Mask variable regions in the Backlinks window screenshot.
 convert "$BACKLINKS_SCREENSHOT" \
@@ -230,19 +241,19 @@ convert "$BACKLINKS_SCREENSHOT" \
     "$BACKLINKS_MASKED_SCREENSHOT"
 
 back_digest=$(convert "$BACKLINKS_MASKED_SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
-echo "Backlinks window screenshot MD5 digest: $back_digest." >&2
+log "Backlinks window screenshot MD5 digest: $back_digest."
 
-echo "Acquiring window geometry for window $backlinks_window_id..."
+log "Acquiring window geometry for window $backlinks_window_id..."
 geom=$(xdotool getwindowgeometry --shell "$backlinks_window_id")
 eval "$geom"
-echo "Backlinks window geometry: X=$X Y=$Y WIDTH=$WIDTH HEIGHT=$HEIGHT." >&2
+log "Backlinks window geometry: X=$X Y=$Y WIDTH=$WIDTH HEIGHT=$HEIGHT."
 
 # Close the Backlinks window.
 close_x=$((X + WIDTH - 20))
 close_y=$((Y + HEIGHT - 20))
 run_and_time xdotool mousemove --sync "$close_x" "$close_y" click 1
 
-echo "Waiting up to 10 seconds for the Backlinks window to close..." >&2
+log "Waiting up to 10 seconds for the Backlinks window to close..."
 closed=false
 for i in {1..100}; do
     if ! xwininfo -id "$backlinks_window_id" >/dev/null 2>&1; then
@@ -252,9 +263,9 @@ for i in {1..100}; do
     sleep 0.1
 done
 if $closed; then
-    echo "Backlinks window closed successfully." >&2
+    log "Backlinks window closed successfully."
 else
-    echo "Backlinks window failed to close." >&2
+    log "Backlinks window failed to close."
     exit 1
 fi
 
@@ -267,7 +278,7 @@ main_close_y=$((main_Y + main_HEIGHT - 20))
 # window.
 run_and_time xdotool mousemove "$main_close_x" "$main_close_y" click 1
 
-echo "Waiting up to 10 seconds for the main window to close..." >&2
+log "Waiting up to 10 seconds for the main window to close..."
 closed=false
 for i in {1..100}; do
     if ! xwininfo -id "$window_id" >/dev/null 2>&1; then
@@ -277,9 +288,9 @@ for i in {1..100}; do
     sleep 0.1
 done
 if $closed; then
-    echo "Window closed successfully." >&2
+    log "Window closed successfully."
 else
-    echo "Window did not close." >&2
+    log "Window did not close."
 fi
 
 exit 0
