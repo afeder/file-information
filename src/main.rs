@@ -45,6 +45,10 @@ use url::Url;
 // This must match the ID declared in the desktop file for proper integration.
 const APP_ID: &str = "com.example.FileInformation";
 
+/// Command line usage string printed when the help flag is given or the
+/// invocation is missing required arguments.
+const USAGE: &str = "Usage: file-information [--uri|-u] [--debug|-d] <file-or-URI>";
+
 // Tooltips can become very verbose for long values. The user can still copy the
 // full value, so we limit the tooltip length to keep the UI readable.
 const TOOLTIP_MAX_CHARS: usize = 80;
@@ -94,6 +98,11 @@ fn main() {
     // Collect all command line arguments except the binary name.
     let mut args: Vec<String> = env::args().skip(1).collect();
 
+    if args.iter().any(|a| a == "-h" || a == "--help") {
+        eprintln!("{}", USAGE);
+        return;
+    }
+
     // Flags which influence how we interpret the first argument and whether to
     // emit debug output.
     let mut raw_uri = false;
@@ -135,6 +144,10 @@ fn main() {
             .skip(1)
             .map(|s| s.to_string_lossy().into_owned())
             .collect();
+        if inputs.iter().any(|a| a == "-h" || a == "--help") {
+            eprintln!("{}", USAGE);
+            return 0;
+        }
         let mut raw = raw_uri;
         let mut debug = debug_flag;
         let mut items = inputs.clone();
@@ -163,7 +176,7 @@ fn main() {
             build_ui(app, uri.clone(), debug);
             0
         } else {
-            eprintln!("Usage: file-information [--uri|-u] [--debug|-d] <file-or-URI>");
+            eprintln!("{}", USAGE);
             1
         }
     });
