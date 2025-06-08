@@ -31,6 +31,9 @@ cleanup() {
     if [ -n "${xvfb_pid:-}" ]; then
         kill "${xvfb_pid}" 2>/dev/null || true
     fi
+    if [ -n "${TEMP_XDG_HOME:-}" ] && [ -d "$TEMP_XDG_HOME" ]; then
+        rm -rf "$TEMP_XDG_HOME"
+    fi
 }
 trap cleanup EXIT
 
@@ -96,6 +99,33 @@ export DISPLAY="$XVFB_DISPLAY"
 export GDK_BACKEND=x11
 export GTK_A11Y=none
 export LIBGL_ALWAYS_SOFTWARE=1
+
+# Set up a mock default handler for opening text files. This must be
+# completely isolated from the user's real configuration.
+TEMP_XDG_HOME="$(mktemp -d)"
+export XDG_DATA_HOME="$TEMP_XDG_HOME"
+export XDG_DATA_DIRS="$TEMP_XDG_HOME:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+MOCK_OPEN_SCRIPT="$TEMP_XDG_HOME/mock-open.sh"
+MOCK_OPEN_DESKTOP="$TEMP_XDG_HOME/applications/mock-open.desktop"
+log "Configuring mock default handler for text/plain in $TEMP_XDG_HOME ..."
+cat <<'EOS' >"$MOCK_OPEN_SCRIPT"
+#!/bin/sh
+echo "$@" >>/tmp/mock_open_args
+touch /tmp/mock_open_invoked
+exit 0
+EOS
+chmod +x "$MOCK_OPEN_SCRIPT"
+mkdir -p "$(dirname "$MOCK_OPEN_DESKTOP")"
+cat <<EOS >"$MOCK_OPEN_DESKTOP"
+[Desktop Entry]
+Type=Application
+Name=Mock Open
+Exec=$MOCK_OPEN_SCRIPT %U
+NoDisplay=true
+MimeType=text/plain
+EOS
+update-desktop-database "$(dirname "$MOCK_OPEN_DESKTOP")" >/dev/null 2>&1 || true
+xdg-mime default "$(basename "$MOCK_OPEN_DESKTOP")" text/plain
 
 # Start a D-Bus session if needed.
 if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
@@ -219,6 +249,24 @@ main_X=$X
 main_Y=$Y
 main_WIDTH=$WIDTH
 main_HEIGHT=$HEIGHT
+
+# Click the Open button and verify our mock handler is executed.
+log "Clicking the Open button in the main window..."
+rm -f /tmp/mock_open_invoked /tmp/mock_open_args
+open_x=$((main_X + main_WIDTH - 150))
+open_y=$((main_Y + main_HEIGHT - 20))
+run_and_time xdotool mousemove --sync "$open_x" "$open_y" click 1
+
+for i in {1..100}; do
+    if [ -f /tmp/mock_open_invoked ]; then
+        log "Mock handler invoked after clicking Open." 
+        break
+    fi
+    sleep 0.1
+done
+if [ ! -f /tmp/mock_open_invoked ]; then
+    error "Open button failed to invoke the mock handler."
+fi
 
 # Open the Backlinks view by clicking the Backlinks button near the bottom-right
 # of the main window.
