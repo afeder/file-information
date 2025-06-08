@@ -12,8 +12,8 @@ run_and_time() {
 }
 
 XVFB_DISPLAY=:99
-SCREENSHOT="/tmp/file_information_test_screenshot.png"
-MASKED_SCREENSHOT="/tmp/file_information_test_screenshot_masked.png"
+MAIN_SCREENSHOT="/tmp/file_information_main_screenshot.png"
+MAIN_MASKED_SCREENSHOT="/tmp/file_information_main_screenshot_masked.png"
 BACKLINKS_SCREENSHOT="/tmp/file_information_backlinks_screenshot.png"
 BACKLINKS_MASKED_SCREENSHOT="/tmp/file_information_backlinks_screenshot_masked.png"
 TEST_DIR="$HOME/tmp"
@@ -148,21 +148,21 @@ if ! $ready; then
     exit 1
 fi
 
-echo "Saving screenshot of window $window_id on display $XVFB_DISPLAY to $SCREENSHOT..."
-import -display "$XVFB_DISPLAY" -window "$window_id" "$SCREENSHOT"
+echo "Saving screenshot of window $window_id on display $XVFB_DISPLAY to $MAIN_SCREENSHOT..."
+import -display "$XVFB_DISPLAY" -window "$window_id" "$MAIN_SCREENSHOT"
 
 # Mask variable regions that can affect the MD5 digest by overlaying black
 # rectangles on the captured image.
-convert "$SCREENSHOT" \
+convert "$MAIN_SCREENSHOT" \
     -fill black -draw "rectangle 176,130 310,143" \
     -fill black -draw "rectangle 176,180 310,193" \
     -fill black -draw "rectangle 176,205 183,218" \
     -fill black -draw "rectangle 11,230 568,445" \
-    "$MASKED_SCREENSHOT"
+    "$MAIN_MASKED_SCREENSHOT"
 
 # Compute and log the MD5 digest of the raw screenshot so it can be compared
 # against known values.
-digest=$(convert "$MASKED_SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
+digest=$(convert "$MAIN_MASKED_SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
 echo "Screenshot MD5 digest: $digest" >&2
 
 # Print geometry using the captured window ID.
