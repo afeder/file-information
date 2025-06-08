@@ -175,7 +175,7 @@ log "Saving screenshot of window $main_window_id on display $XVFB_DISPLAY to $MA
 import -display "$XVFB_DISPLAY" -window "$main_window_id" "$MAIN_SCREENSHOT"
 log "Main window screenshot saved to $MAIN_SCREENSHOT."
 
-# Mask variable regions that can affect the MD5 digest by overlaying black
+# Mask known variable regions that can affect the MD5 digest by overlaying black
 # rectangles on the captured image.
 convert "$MAIN_SCREENSHOT" \
     -fill black -draw "rectangle 176,130 310,143" \
@@ -240,12 +240,9 @@ log "Saving screenshot of window $backlinks_window_id on display $XVFB_DISPLAY t
 import -display "$XVFB_DISPLAY" -window "$backlinks_window_id" "$BACKLINKS_SCREENSHOT"
 log "Backlinks window screenshot saved to $BACKLINKS_SCREENSHOT."
 
-# Mask variable regions in the Backlinks window screenshot.
+# Mask known variable regions in the Backlinks window screenshot.
 convert "$BACKLINKS_SCREENSHOT" \
-    -fill black -draw "rectangle 176,130 310,143" \
-    -fill black -draw "rectangle 176,180 310,193" \
-    -fill black -draw "rectangle 176,205 183,218" \
-    -fill black -draw "rectangle 11,230 568,445" \
+    -fill black -draw "rectangle 11,57 310,70" \
     "$BACKLINKS_MASKED_SCREENSHOT"
 
 back_digest=$(convert "$BACKLINKS_MASKED_SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
