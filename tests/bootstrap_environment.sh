@@ -1,7 +1,7 @@
+#!/bin/sh
+
 # This script is designed to bootstrap the environment for testing. It assumes a
 # minimal Debian/Ubuntu base environment.
-
-#!/bin/sh
 
 # Abort if it looks like we're running on a regular desktop system unless the
 # user explicitly overrides.  We check common environment variables that are
