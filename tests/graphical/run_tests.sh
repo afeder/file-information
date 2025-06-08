@@ -4,6 +4,8 @@ set -euo pipefail
 XVFB_DISPLAY=:99
 SCREENSHOT="/tmp/file_information_test_screenshot.png"
 MASKED_SCREENSHOT="/tmp/file_information_test_screenshot_masked.png"
+BACKLINKS_SCREENSHOT="/tmp/file_information_backlinks_screenshot.png"
+BACKLINKS_MASKED_SCREENSHOT="/tmp/file_information_backlinks_screenshot_masked.png"
 TEST_DIR="$HOME/tmp"
 TEST_FILE="$TEST_DIR/testfile.txt"
 XVFB_LOG="/tmp/xvfb.log"
@@ -159,13 +161,89 @@ geom=$(xdotool getwindowgeometry --shell "$window_id")
 eval "$geom"
 echo "Window geometry: X=$X Y=$Y WIDTH=$WIDTH HEIGHT=$HEIGHT" >&2
 
-# Click the "Close" button near the lower-right corner of the window.
+# Save main window geometry for later interactions.
+main_X=$X
+main_Y=$Y
+main_WIDTH=$WIDTH
+main_HEIGHT=$HEIGHT
+
+# Open the Backlinks view by clicking the Backlinks button near the bottom-right
+# of the main window.
+backlinks_x=$((main_X + main_WIDTH - 270))
+backlinks_y=$((main_Y + main_HEIGHT - 20))
+xdotool mousemove --sync "$backlinks_x" "$backlinks_y" click 1
+
+echo "Waiting up to 10 seconds for the Backlinks window to be created..." >&2
+for i in {1..100}; do
+    if xdotool search --name "Backlinks" >/dev/null 2>&1; then
+        break
+    fi
+    sleep 0.1
+done
+if ! xdotool search --name "Backlinks" >/dev/null 2>&1; then
+    echo "Timed out waiting for the Backlinks window to be created." >&2
+    exit 1
+fi
+
+back_window_id=$(xdotool search --name "Backlinks" | head -n 1)
+
+echo "Waiting up to 10 seconds for backlinks to be displayed..." >&2
+back_ready=false
+for i in {1..100}; do
+    if grep -q "Backlinks query returned" "$APP_LOG"; then
+        back_ready=true
+        break
+    fi
+    sleep 0.1
+done
+if ! $back_ready; then
+    echo "Timed out waiting for backlinks to be displayed." >&2
+    exit 1
+fi
+
+echo "Saving screenshot of window $back_window_id on display $XVFB_DISPLAY to $BACKLINKS_SCREENSHOT..."
+import -display "$XVFB_DISPLAY" -window "$back_window_id" "$BACKLINKS_SCREENSHOT"
+
+# Mask variable regions in the Backlinks screenshot.
+convert "$BACKLINKS_SCREENSHOT" \
+    -fill black -draw "rectangle 176,130 310,143" \
+    -fill black -draw "rectangle 176,180 310,193" \
+    -fill black -draw "rectangle 176,205 183,218" \
+    -fill black -draw "rectangle 11,230 568,445" \
+    "$BACKLINKS_MASKED_SCREENSHOT"
+
+back_digest=$(convert "$BACKLINKS_MASKED_SCREENSHOT" rgba:- | md5sum | awk '{print $1}')
+echo "Backlinks screenshot MD5 digest: $back_digest" >&2
+
+echo "Acquiring window geometry for window $back_window_id..."
+geom=$(xdotool getwindowgeometry --shell "$back_window_id")
+eval "$geom"
+echo "Backlinks window geometry: X=$X Y=$Y WIDTH=$WIDTH HEIGHT=$HEIGHT" >&2
+
 close_x=$((X + WIDTH - 20))
 close_y=$((Y + HEIGHT - 20))
 xdotool mousemove --sync "$close_x" "$close_y" click 1
 
-# Check if the window closed successfully.
-echo "Waiting up to 10 seconds for the window to close..." >&2
+echo "Waiting up to 10 seconds for the Backlinks window to close..." >&2
+closed=false
+for i in {1..100}; do
+    if ! xwininfo -id "$back_window_id" >/dev/null 2>&1; then
+        closed=true
+        break
+    fi
+    sleep 0.1
+done
+if ! $closed; then
+    echo "Backlinks window did not close." >&2
+    exit 1
+fi
+
+# Now close the main window.
+main_close_x=$((main_X + main_WIDTH - 20))
+main_close_y=$((main_Y + main_HEIGHT - 20))
+xdotool mousemove --sync "$main_close_x" "$main_close_y" click 1
+
+echo "Waiting up to 10 seconds for the main window to close..." >&2
 closed=false
 for i in {1..100}; do
     if ! xwininfo -id "$window_id" >/dev/null 2>&1; then
