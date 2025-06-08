@@ -288,9 +288,9 @@ for i in {1..100}; do
     sleep 0.1
 done
 if $closed; then
-    log "Window closed successfully."
+    log "Main window closed successfully."
 else
-    log "Window did not close."
+    log "Main window failed to close."
 fi
 
 exit 0
