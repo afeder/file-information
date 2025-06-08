@@ -15,6 +15,19 @@ url = "2"
 
 tracker     = { package = "tracker-rs", version = "0.6" }
 
+[package.metadata.deb]
+maintainer = "Example Maintainer <maintainer@example.com>"
+copyright = "2024, Example Maintainer"
+section = "utils"
+priority = "optional"
+extended-description = "A GTK application that shows Tracker metadata for files"
+depends = "$auto"
+assets = [
+    ["target/release/file-information", "usr/bin/", "755"],
+    ["resources/file-information.desktop", "usr/share/applications/", "644"],
+]
+maintainer-scripts = "debian"
+
 [build-dependencies]
 system-deps = "7"
 

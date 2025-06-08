@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=File Information
+Comment=Display Tracker metadata for files
+Exec=file-information %U
+Terminal=false
+Icon=dialog-information
+Categories=Utility;
+MimeType=inode/directory;application/octet-stream;text/plain;image/png;image/jpeg;audio/mpeg;video/mp4;
