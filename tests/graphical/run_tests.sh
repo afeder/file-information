@@ -1,6 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 
+# Helper to measure command duration in milliseconds.
+run_and_time() {
+    local start end duration
+    start=$(date +%s%N)
+    "$@"
+    end=$(date +%s%N)
+    duration=$(( (end - start) / 1000000 ))
+    echo "Command '$*' took ${duration} ms" >&2
+}
+
 XVFB_DISPLAY=:99
 SCREENSHOT="/tmp/file_information_test_screenshot.png"
 MASKED_SCREENSHOT="/tmp/file_information_test_screenshot_masked.png"
@@ -171,7 +181,7 @@ main_HEIGHT=$HEIGHT
 # of the main window.
 backlinks_x=$((main_X + main_WIDTH - 270))
 backlinks_y=$((main_Y + main_HEIGHT - 20))
-xdotool mousemove --sync "$backlinks_x" "$backlinks_y" click 1
+run_and_time xdotool mousemove --sync "$backlinks_x" "$backlinks_y" click 1
 
 echo "Waiting up to 10 seconds for the Backlinks window to be created..." >&2
 for i in {1..100}; do
@@ -223,7 +233,7 @@ echo "Backlinks window geometry: X=$X Y=$Y WIDTH=$WIDTH HEIGHT=$HEIGHT" >&2
 # Close the Backlinks window.
 close_x=$((X + WIDTH - 20))
 close_y=$((Y + HEIGHT - 20))
-xdotool mousemove --sync "$close_x" "$close_y" click 1
+run_and_time xdotool mousemove --sync "$close_x" "$close_y" click 1
 
 echo "Waiting up to 10 seconds for the Backlinks window to close..." >&2
 closed=false
@@ -244,7 +254,7 @@ fi
 # Now close the main window.
 main_close_x=$((main_X + main_WIDTH - 20))
 main_close_y=$((main_Y + main_HEIGHT - 20))
-xdotool mousemove --sync "$main_close_x" "$main_close_y" click 1
+run_and_time xdotool mousemove --sync "$main_close_x" "$main_close_y" click 1
 
 echo "Waiting up to 10 seconds for the main window to close..." >&2
 closed=false
