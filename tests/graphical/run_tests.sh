@@ -12,6 +12,11 @@ log() {
     printf "%b[%s]%b %b%s%b\n" "$GREEN" "$(date '+%H:%M:%S')" "$RESET" "$YELLOW" "$*" "$RESET" >&2
 }
 
+# Log an error message in red with a timestamp.
+error() {
+    printf "%b[%s]%b %b%s%b\n" "$GREEN" "$(date '+%H:%M:%S')" "$RESET" "$RED" "$*" "$RESET" >&2
+}
+
 # Helper to measure command duration in milliseconds.
 run_and_time() {
     local start end duration
@@ -106,7 +111,7 @@ for i in {1..600}; do
     sleep 0.1
 done
 if tracker3 info "$TEST_FILE" 2>&1 | grep -q "No metadata available"; then
-    log "Timed out waiting for Tracker to index $TEST_FILE."
+    error "Timed out waiting for Tracker to index $TEST_FILE."
     exit 1
 fi
 
@@ -128,7 +133,7 @@ for i in {1..100}; do
     sleep 0.1
 done
 if ! xdotool search --name "File Information" >/dev/null 2>&1; then
-    log "Timed out waiting for the main window to be created."
+    error "Timed out waiting for the main window to be created."
     exit 1
 fi
 
@@ -145,7 +150,7 @@ for i in {1..100}; do
     sleep 0.1
 done
 if ! xwininfo -id "$window_id" | grep -q "IsViewable"; then
-    log "Timed out waiting for the main window to become viewable."
+    error "Timed out waiting for the main window to become viewable."
     exit 1
 fi
 
@@ -160,7 +165,7 @@ for i in {1..100}; do
     sleep 0.1
 done
 if ! $ready; then
-    log "Timed out waiting for query results to be displayed."
+    error "Timed out waiting for query results to be displayed."
     exit 1
 fi
 
@@ -208,7 +213,7 @@ for i in {1..100}; do
     sleep 0.1
 done
 if ! xdotool search --name "Backlinks" >/dev/null 2>&1; then
-    log "Timed out waiting for the Backlinks window to be created."
+    error "Timed out waiting for the Backlinks window to be created."
     exit 1
 fi
 
@@ -224,7 +229,7 @@ for i in {1..100}; do
     sleep 0.1
 done
 if ! $back_ready; then
-    log "Timed out waiting for query results to be displayed."
+    error "Timed out waiting for query results to be displayed."
     exit 1
 fi
 
@@ -265,7 +270,7 @@ done
 if $closed; then
     log "Backlinks window closed successfully."
 else
-    log "Backlinks window failed to close."
+    error "Backlinks window failed to close."
     exit 1
 fi
 
@@ -290,7 +295,7 @@ done
 if $closed; then
     log "Main window closed successfully."
 else
-    log "Main window failed to close."
+    error "Main window failed to close."
 fi
 
 exit 0
