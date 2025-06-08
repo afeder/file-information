@@ -1,6 +1,5 @@
 #!/bin/sh
 set -e
 
-cargo test
+cargo test --verbose
 "$(dirname "$0")/graphical/run_tests.sh"
-
