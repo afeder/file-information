@@ -254,7 +254,11 @@ fi
 # Now close the main window.
 main_close_x=$((main_X + main_WIDTH - 20))
 main_close_y=$((main_Y + main_HEIGHT - 20))
-run_and_time xdotool mousemove --sync "$main_close_x" "$main_close_y" click 1
+# We do not use --sync here, because that causes the command to take very long
+# (seconds) to complete, allegedly due to --sync mode having to wait for the
+# whole application tear-down to complete when closing the last remaining
+# window.
+run_and_time xdotool mousemove "$main_close_x" "$main_close_y" click 1
 
 echo "Waiting up to 10 seconds for the main window to close..." >&2
 closed=false
