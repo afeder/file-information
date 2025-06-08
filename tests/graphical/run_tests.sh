@@ -1,11 +1,34 @@
 #!/bin/bash
 set -euo pipefail
 
+XVFB_DISPLAY=:99
+MAIN_SCREENSHOT="/tmp/file_information_main_screenshot.png"
+MAIN_MASKED_SCREENSHOT="/tmp/file_information_main_screenshot_masked.png"
+BACKLINKS_SCREENSHOT="/tmp/file_information_backlinks_screenshot.png"
+BACKLINKS_MASKED_SCREENSHOT="/tmp/file_information_backlinks_screenshot_masked.png"
+TEST_DIR="$HOME/tmp"
+TEST_FILE="$TEST_DIR/testfile.txt"
+XVFB_LOG="/tmp/xvfb.log"
+APP_LOG="/tmp/file_information_app.log"
+
 # ANSI color codes for log messages.
 GREEN="\033[1;32m"
 YELLOW="\033[1;33m"
 RED="\033[1;31m"
 RESET="\033[0m"
+
+app_pid=""
+xvfb_pid=""
+
+cleanup() {
+    if [ -n "${app_pid:-}" ]; then
+        kill "${app_pid}" 2>/dev/null || true
+    fi
+    if [ -n "${xvfb_pid:-}" ]; then
+        kill "${xvfb_pid}" 2>/dev/null || true
+    fi
+}
+trap cleanup EXIT
 
 # Log a message with a timestamp and colored text.
 log() {
@@ -26,28 +49,6 @@ run_and_time() {
     duration=$(( (end - start) / 1000000 ))
     log "Command '$*' took ${duration} ms."
 }
-
-XVFB_DISPLAY=:99
-MAIN_SCREENSHOT="/tmp/file_information_main_screenshot.png"
-MAIN_MASKED_SCREENSHOT="/tmp/file_information_main_screenshot_masked.png"
-BACKLINKS_SCREENSHOT="/tmp/file_information_backlinks_screenshot.png"
-BACKLINKS_MASKED_SCREENSHOT="/tmp/file_information_backlinks_screenshot_masked.png"
-TEST_DIR="$HOME/tmp"
-TEST_FILE="$TEST_DIR/testfile.txt"
-XVFB_LOG="/tmp/xvfb.log"
-APP_LOG="/tmp/file_information_app.log"
-app_pid=""
-xvfb_pid=""
-
-cleanup() {
-    if [ -n "${app_pid:-}" ]; then
-        kill "${app_pid}" 2>/dev/null || true
-    fi
-    if [ -n "${xvfb_pid:-}" ]; then
-        kill "${xvfb_pid}" 2>/dev/null || true
-    fi
-}
-trap cleanup EXIT
 
 release=false
 for arg in "$@"; do
