@@ -74,9 +74,9 @@ fi
 log "Building the application..."
 if [ ! -x "$app_path" ]; then
     if $release; then
-        cargo build --release
+        cargo build --release --verbose
     else
-        cargo build
+        cargo build --verbose
     fi
     log "Build complete. Binary located at $app_path."
 else
