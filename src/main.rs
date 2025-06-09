@@ -40,17 +40,19 @@ struct TableRow {
     native_value: String,
 }
 
-fn main() {
-    let mut args: Vec<String> = env::args().skip(1).collect();
+struct CommandArgs {
+    raw_uri: bool,
+    debug: bool,
+    items: Vec<String>,
+}
 
+fn parse_args(mut args: Vec<String>) -> Result<CommandArgs, i32> {
     if args.iter().any(|a| a == "-h" || a == "--help") {
         eprintln!("{}", USAGE);
-        return;
+        return Err(0);
     }
-
     let mut raw_uri = false;
     let mut debug_flag = false;
-
     loop {
         match args.first().map(|s| s.as_str()) {
             Some("-u") | Some("--uri") => {
@@ -64,6 +66,23 @@ fn main() {
             _ => break,
         }
     }
+    Ok(CommandArgs {
+        raw_uri,
+        debug: debug_flag,
+        items: args,
+    })
+}
+
+fn main() {
+    let env_args: Vec<String> = env::args().skip(1).collect();
+    let CommandArgs {
+        raw_uri,
+        debug: debug_flag,
+        ..
+    } = match parse_args(env_args) {
+        Ok(c) => c,
+        Err(code) => std::process::exit(code),
+    };
 
     let app = Application::builder()
         .application_id(APP_ID)
@@ -77,27 +96,13 @@ fn main() {
             .skip(1)
             .map(|s| s.to_string_lossy().into_owned())
             .collect();
-        if inputs.iter().any(|a| a == "-h" || a == "--help") {
-            eprintln!("{}", USAGE);
-            return 0;
-        }
-        let mut raw = raw_uri;
-        let mut debug = debug_flag;
-        let mut items = inputs.clone();
-        loop {
-            match items.first().map(|s| s.as_str()) {
-                Some("-u") | Some("--uri") => {
-                    raw = true;
-                    items.remove(0);
-                }
-                Some("-d") | Some("--debug") => {
-                    debug = true;
-                    items.remove(0);
-                }
-                _ => break,
-            }
-        }
-        if let Some(id) = items.first() {
+        let opts = match parse_args(inputs) {
+            Ok(c) => c,
+            Err(code) => return code,
+        };
+        let raw = raw_uri || opts.raw_uri;
+        let debug = debug_flag || opts.debug;
+        if let Some(id) = opts.items.first() {
             let uri = if raw {
                 id.clone()
             } else {
