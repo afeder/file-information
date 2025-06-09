@@ -1,9 +1,3 @@
-//! File Information viewer using GTK and Tracker
-//!
-//! This tool queries the Tracker database for metadata about files or arbitrary URIs
-//! and displays the results in a GTK-based window. The code is intentionally
-//! commented in detail to ease exploration and modification.
-
 use adw::prelude::*;
 use adw::{Application, ApplicationWindow, HeaderBar, ToolbarView};
 use csv::WriterBuilder;
@@ -18,38 +12,27 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
 use std::rc::Rc;
-use tracker::prelude::SparqlCursorExtManual;
 use tracker::SparqlConnection;
+use tracker::prelude::SparqlCursorExtManual;
 use url::Url;
 
-/// Application identifier used when registering the `GtkApplication`.
 const APP_ID: &str = "com.example.FileInformation";
 
-/// Short usage string printed for `--help` and on invalid invocation.
 const USAGE: &str = "Usage: file-information [--uri|-u] [--debug|-d] <file-or-URI>";
 
-/// Maximum length for any tooltip before the text is ellipsized.
 const TOOLTIP_MAX_CHARS: usize = 80;
 
-/// Longer tooltip limit specifically for ontology comments.
 const COMMENT_TOOLTIP_MAX_CHARS: usize = TOOLTIP_MAX_CHARS * 3;
 
-/// RDF predicate used to describe the type of a resource.
 const RDF_TYPE: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
 
-/// Datatype URI Tracker uses for timestamps and dates.
 const XSD_DATETYPE: &str = "http://www.w3.org/2001/XMLSchema#dateType";
 
-/// RDF predicate for fetching human readable comments on terms.
 const RDFS_COMMENT: &str = "http://www.w3.org/2000/01/rdf-schema#comment";
 
-/// Tracker ontology class representing a regular file on disk.
 const FILEDATAOBJECT: &str = "http://tracker.api.gnome.org/ontology/v3/nfo#FileDataObject";
 
 #[derive(Clone, Default)]
-/// Representation of a single row in the results grid.
-/// `display_*` fields contain strings shown to the user while
-/// `native_*` retain the original values returned by Tracker.
 struct TableRow {
     display_predicate: String,
     native_predicate: String,
@@ -57,7 +40,6 @@ struct TableRow {
     native_value: String,
 }
 
-/// Parses command line options and launches the GTK application.
 fn main() {
     let mut args: Vec<String> = env::args().skip(1).collect();
 
@@ -66,13 +48,9 @@ fn main() {
         return;
     }
 
-    // Whether the supplied argument should be interpreted literally as a URI.
     let mut raw_uri = false;
-    // Enables additional debug output throughout the program.
     let mut debug_flag = false;
 
-    // Extract -u/--uri and -d/--debug flags from the argument list. Any
-    // remaining item is treated as the file path or URI to display.
     loop {
         match args.first().map(|s| s.as_str()) {
             Some("-u") | Some("--uri") => {
@@ -92,11 +70,8 @@ fn main() {
         .flags(ApplicationFlags::HANDLES_COMMAND_LINE)
         .build();
 
-    // When launched from the command line we want to handle our own argument
-    // parsing instead of letting `GtkApplication` do it for us.
     app.connect_command_line(move |app, cmd_line| {
         let argv = cmd_line.arguments();
-        // Convert raw argv values into owned `String`s.
         let inputs: Vec<String> = argv
             .iter()
             .skip(1)
@@ -106,11 +81,9 @@ fn main() {
             eprintln!("{}", USAGE);
             return 0;
         }
-        // Each invocation inherits the global flag defaults captured from `main`.
         let mut raw = raw_uri;
         let mut debug = debug_flag;
         let mut items = inputs.clone();
-        // Continue stripping recognised flags from the start of `items`.
         loop {
             match items.first().map(|s| s.as_str()) {
                 Some("-u") | Some("--uri") => {
@@ -124,16 +97,12 @@ fn main() {
                 _ => break,
             }
         }
-        // `items` now holds only the remaining positional argument (if any).
         if let Some(id) = items.first() {
-            // Convert the user supplied argument into an absolute URI. If
-            // `--uri` was specified we trust the value directly.
             let uri = if raw {
                 id.clone()
             } else {
                 gio::File::for_path(id).uri().to_string()
             };
-            // Ensure application resources are initialised before showing UI.
             app.activate();
             build_ui(app, uri.clone(), debug);
             0
@@ -143,26 +112,20 @@ fn main() {
         }
     });
 
-    // When activated without files just keep the application alive. The real
-    // work happens in `connect_command_line` or `connect_open`.
     app.connect_activate(|_| {});
 
-    // Handle files passed from a file manager integration.
     app.connect_open(move |app, files, _| {
         if let Some(file) = files.first() {
             build_ui(app, file.uri().to_string(), debug_flag);
         }
     });
 
-    // Hand control over to GTK's main loop.
     app.run();
 }
 
-/// Construct and display the main window showing metadata for `uri`.
 fn build_ui(app: &Application, uri: String, debug: bool) {
     let window = ApplicationWindow::builder()
         .application(app)
-        // Reasonably sized default window so most metadata fits without scrolling.
         .default_width(590)
         .default_height(400)
         .title("File Information")
@@ -170,7 +133,6 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
 
     add_common_actions(&window);
 
-    // Apply a small custom CSS snippet to tweak our grid visuals.
     let provider = CssProvider::new();
     let css = r#"
         grid#data-grid {
@@ -188,7 +150,6 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
         }
     "#;
     provider.load_from_data(css);
-    // Install the CSS so it affects widgets created below.
     if let Some(display) = Display::default() {
         gtk::style_context_add_provider_for_display(
             &display,
@@ -197,14 +158,12 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
         );
     }
 
-    // Simple header bar with a title that updates once data has loaded.
     let header = HeaderBar::new();
     header.set_show_end_title_buttons(true);
 
     let header_label = Label::new(Some("Loading…"));
     header.set_title_widget(Some(&header_label));
 
-    // Grid used to list each predicate/value pair.
     let grid = Grid::builder()
         .column_homogeneous(false)
         .hexpand(true)
@@ -282,7 +241,6 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
         show_backlinks_window(&app_clone, &win_parent, uri_bl.clone(), debug_clone);
     });
 
-    // Bottom area with a few action buttons.
     let bottom_box = GtkBox::new(Orientation::Horizontal, 0);
     bottom_box.set_spacing(5);
     bottom_box.set_halign(gtk::Align::End);
@@ -309,7 +267,6 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
     let data_clone = table_data.clone();
     let uri_clone = uri.clone();
 
-    // Populate the grid asynchronously so the UI remains responsive.
     glib::MainContext::default().spawn_local(async move {
         let (is_file_data_object, rows) =
             populate_grid(&app_clone, &window_clone, &grid_clone, &uri_clone, debug).await;
@@ -323,8 +280,6 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
             "Node Information"
         });
 
-        // When debugging we log once the grid has been painted to know when
-        // rendering of the data actually completed.
         if debug {
             if let Some(clock) = grid_clone.frame_clock() {
                 use std::cell::RefCell;
@@ -350,9 +305,6 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
     });
 }
 
-/// Query Tracker for all triples about the given `uri` and populate the grid
-/// widget with the results. Returns whether the node represents a file and all
-/// collected rows for later use.
 async fn populate_grid(
     app: &Application,
     window: &ApplicationWindow,
@@ -360,7 +312,6 @@ async fn populate_grid(
     uri: &str,
     debug: bool,
 ) -> (bool, Vec<TableRow>) {
-    // Remove any existing rows from previous content so we start fresh.
     while let Some(child) = grid.first_child() {
         grid.remove(&child);
     }
@@ -430,7 +381,6 @@ async fn populate_grid(
         }
     };
 
-    // Query Tracker for all predicates and objects associated with the URI.
     let sparql = format!(
         r#"
         SELECT DISTINCT ?pred ?obj (DATATYPE(?obj) AS ?dtype) WHERE {{
@@ -485,7 +435,6 @@ async fn populate_grid(
     }
 
     let mut row = 1;
-    // Iterate over predicates in a deterministic order so the UI is stable.
     for pred in order {
         if let Some(entries) = map.get(&pred) {
             let label_text = friendly_label(&pred);
@@ -634,8 +583,6 @@ async fn populate_grid(
     (is_file_data_object, rows_vec)
 }
 
-/// Create a more readable label from a URI by splitting on case changes and
-/// trimming trailing delimiters. This keeps ontology predicates user friendly.
 fn friendly_label(uri: &str) -> String {
     let trimmed = uri.trim_end_matches(&['#', '/'][..]);
     let last = trimmed.rsplit(&['#', '/'][..]).next().unwrap_or(trimmed);
@@ -665,8 +612,6 @@ fn friendly_label(uri: &str) -> String {
         .join(" ")
 }
 
-/// Convert a raw value returned from Tracker into a human friendly string. Only
-/// a few datatypes are currently recognised.
 fn friendly_value(obj: &str, dtype: &str) -> String {
     if dtype == XSD_DATETYPE {
         if let Ok(dt) = glib::DateTime::from_iso8601(obj, None)
@@ -679,8 +624,6 @@ fn friendly_value(obj: &str, dtype: &str) -> String {
     obj.to_string()
 }
 
-/// Truncate a string to `max_chars` Unicode characters, appending an ellipsis
-/// when the input is longer.
 fn ellipsize(s: &str, max_chars: usize) -> String {
     let mut count = 0;
     let mut result = String::new();
@@ -699,12 +642,10 @@ fn ellipsize(s: &str, max_chars: usize) -> String {
     }
 }
 
-/// Heuristic check whether a string appears to be a valid URI.
 fn looks_like_uri(s: &str) -> bool {
     Url::parse(s).is_ok()
 }
 
-/// Check whether the current system knows how to open the given URI.
 fn uri_has_handler(uri: &str) -> Result<(), String> {
     if let Ok(url) = Url::parse(uri) {
         if url.scheme() == "file" {
@@ -726,8 +667,6 @@ fn uri_has_handler(uri: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Register a few common actions on the window so menus and buttons can easily
-/// trigger clipboard copies or opening URIs.
 fn add_common_actions(window: &ApplicationWindow) {
     let copy_disp = gio::SimpleAction::new("copy-displayed-value", Some(&VariantTy::STRING));
     copy_disp.connect_activate(move |_action, param| {
@@ -789,7 +728,6 @@ fn add_common_actions(window: &ApplicationWindow) {
     window.add_action(&open_uri_action);
 }
 
-/// Add a right-click popover to `widget` offering clipboard and open actions.
 fn add_copy_menu<W>(widget: &W, displayed: &str, native: &str, disp_label: &str, nat_label: &str)
 where
     W: IsA<gtk::Widget> + Clone + 'static,
@@ -855,7 +793,6 @@ where
     widget.add_controller(gesture);
 }
 
-/// Build a second window listing triples that reference `uri`.
 fn show_backlinks_window(app: &Application, parent: &ApplicationWindow, uri: String, debug: bool) {
     let window = ApplicationWindow::builder()
         .application(app)
@@ -926,9 +863,7 @@ fn show_backlinks_window(app: &Application, parent: &ApplicationWindow, uri: Str
     });
 }
 
-/// Populate a grid with all subjects that reference `uri`.
 async fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri: &str, debug: bool) {
-    // Clear any existing rows first.
     while let Some(child) = grid.first_child() {
         grid.remove(&child);
     }
@@ -1060,7 +995,6 @@ async fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, 
     }
 }
 
-/// Lookup an rdfs:comment for the given predicate to show as a tooltip.
 fn fetch_comment(predicate: &str) -> Option<String> {
     let conn =
         SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None).ok()?;
