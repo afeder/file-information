@@ -10,7 +10,6 @@ use gtk::pango;
 use gtk::{Box as GtkBox, Button, CssProvider, Grid, Label, Orientation, TextView, Widget};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::env;
 use std::rc::Rc;
 use tracker::SparqlConnection;
 use tracker::prelude::SparqlCursorExtManual;
@@ -40,76 +39,43 @@ struct TableRow {
     native_value: String,
 }
 
-struct CommandArgs {
-    raw_uri: bool,
-    debug: bool,
-    items: Vec<String>,
-}
-
-fn parse_args(mut args: Vec<String>) -> Result<CommandArgs, i32> {
-    if args.iter().any(|a| a == "-h" || a == "--help") {
-        eprintln!("{}", USAGE);
-        return Err(0);
-    }
-    let mut raw_uri = false;
-    let mut debug_flag = false;
-    loop {
-        match args.first().map(|s| s.as_str()) {
-            Some("-u") | Some("--uri") => {
-                raw_uri = true;
-                args.remove(0);
-            }
-            Some("-d") | Some("--debug") => {
-                debug_flag = true;
-                args.remove(0);
-            }
-            _ => break,
-        }
-    }
-    Ok(CommandArgs {
-        raw_uri,
-        debug: debug_flag,
-        items: args,
-    })
-}
-
 fn main() {
-    let env_args: Vec<String> = env::args().skip(1).collect();
-    let CommandArgs {
-        raw_uri,
-        debug: debug_flag,
-        ..
-    } = match parse_args(env_args) {
-        Ok(c) => c,
-        Err(code) => std::process::exit(code),
-    };
-
     let app = Application::builder()
         .application_id(APP_ID)
-        .flags(ApplicationFlags::HANDLES_COMMAND_LINE)
+        .flags(
+            ApplicationFlags::NON_UNIQUE
+                | ApplicationFlags::HANDLES_COMMAND_LINE
+                | ApplicationFlags::HANDLES_OPEN,
+        )
         .build();
 
-    app.connect_command_line(move |app, cmd_line| {
+    app.connect_command_line(|app, cmd_line| {
         let argv = cmd_line.arguments();
-        let inputs: Vec<String> = argv
-            .iter()
-            .skip(1)
-            .map(|s| s.to_string_lossy().into_owned())
-            .collect();
-        let opts = match parse_args(inputs) {
-            Ok(c) => c,
-            Err(code) => return code,
-        };
-        let raw = raw_uri || opts.raw_uri;
-        let debug = debug_flag || opts.debug;
-        if let Some(id) = opts.items.first() {
-            let uri = if raw {
+        let mut flag_uri = false;
+        let mut flag_debug = false;
+        let mut items = Vec::new();
+
+        let mut iter = argv.iter().skip(1).map(|s| s.to_string_lossy().into_owned());
+        while let Some(arg) = iter.next() {
+            match arg.as_str() {
+                "-u" | "--uri" => flag_uri = true,
+                "-d" | "--debug" => flag_debug = true,
+                "-h" | "--help" => {
+                    eprintln!("{}", USAGE);
+                    return 0;
+                }
+                _ => items.push(arg),
+            }
+        }
+
+        if let Some(id) = items.first() {
+            let uri = if flag_uri {
                 id.clone()
             } else {
                 gio::File::for_path(id).uri().to_string()
             };
             app.activate();
-            build_ui(app, uri.clone(), debug);
+            build_ui(app, uri, flag_debug);
             0
         } else {
             eprintln!("{}", USAGE);
@@ -117,13 +83,13 @@ fn main() {
         }
     });
 
-    app.connect_activate(|_| {});
-
-    app.connect_open(move |app, files, _| {
+    app.connect_open(|app, files, _| {
         if let Some(file) = files.first() {
-            build_ui(app, file.uri().to_string(), debug_flag);
+            build_ui(app, file.uri().to_string(), false);
         }
     });
+
+    app.connect_activate(|_| {});
 
     app.run();
 }
