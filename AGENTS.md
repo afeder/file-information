@@ -15,7 +15,6 @@ it to the user.
 - The constant `XSD_DATETYPE` in `src/main.rs` correctly references the URI `http://www.w3.org/2001/XMLSchema#dateType` used by Tracker. Renaming the constant or altering this URI would be incorrect.
 
 ### Other
-- When altering `src/main.rs`, add as many detailed, instructive, and explanatory comments as possible. It's better to include more comments, with plenty of detail, rather than too few—any unnecessary comments can be easily reviewed and removed later.
 - Before committing, run `tests/run_tests.sh` to ensure tests pass.
   - If tests fail, note it in the pull request.
 - Running `tests/run_tests.sh` may take a considerable amount of time because it
