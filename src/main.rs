@@ -55,7 +55,10 @@ fn main() {
         let mut flag_debug = false;
         let mut items = Vec::new();
 
-        let mut iter = argv.iter().skip(1).map(|s| s.to_string_lossy().into_owned());
+        let mut iter = argv
+            .iter()
+            .skip(1)
+            .map(|s| s.to_string_lossy().into_owned());
         while let Some(arg) = iter.next() {
             match arg.as_str() {
                 "-u" | "--uri" => flag_uri = true,
@@ -253,8 +256,8 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
 
         if debug {
             if let Some(clock) = grid_clone.frame_clock() {
-                use std::cell::RefCell;
                 use gdk4::FrameClockPhase;
+                use std::cell::RefCell;
 
                 let handler: Rc<RefCell<Option<glib::SignalHandlerId>>> =
                     Rc::new(RefCell::new(None));
@@ -265,8 +268,7 @@ fn build_ui(app: &Application, uri: String, debug: bool) {
                     }
                     eprintln!(
                         "DEBUG: results displayed rows={} file_data={}",
-                        row_count,
-                        is_file_data_object
+                        row_count, is_file_data_object
                     );
                 });
                 *handler.borrow_mut() = Some(id);
@@ -639,8 +641,8 @@ fn uri_has_handler(uri: &str) -> Result<(), String> {
 }
 
 fn add_common_actions(window: &ApplicationWindow) {
-    let copy_disp = gio::SimpleAction::new("copy-displayed-value", Some(&VariantTy::STRING));
-    copy_disp.connect_activate(move |_action, param| {
+    let copy_value = gio::SimpleAction::new("copy-value", Some(&VariantTy::STRING));
+    copy_value.connect_activate(move |_action, param| {
         if let Some(v) = param {
             if let Some(text) = v.str() {
                 if let Some(display) = Display::default() {
@@ -650,20 +652,7 @@ fn add_common_actions(window: &ApplicationWindow) {
             }
         }
     });
-    window.add_action(&copy_disp);
-
-    let copy_nat = gio::SimpleAction::new("copy-native-value", Some(&VariantTy::STRING));
-    copy_nat.connect_activate(move |_action, param| {
-        if let Some(v) = param {
-            if let Some(text) = v.str() {
-                if let Some(display) = Display::default() {
-                    let clipboard = display.clipboard();
-                    clipboard.set_text(text);
-                }
-            }
-        }
-    });
-    window.add_action(&copy_nat);
+    window.add_action(&copy_value);
 
     let win_for_uri = window.clone();
     let open_uri_action = gio::SimpleAction::new("open-uri", Some(&VariantTy::STRING));
@@ -717,13 +706,12 @@ where
     gesture.connect_pressed(move |_gesture, _n_press, x, y| {
         let menu_model = gio::Menu::new();
 
-        let copy_disp_item =
-            gio::MenuItem::new(Some(&disp_label_str), Some("win.copy-displayed-value"));
+        let copy_disp_item = gio::MenuItem::new(Some(&disp_label_str), Some("win.copy-value"));
         let disp_variant = Variant::from(disp_clone.as_str());
         copy_disp_item.set_attribute_value("target", Some(&disp_variant));
         menu_model.append_item(&copy_disp_item);
 
-        let copy_nat_item = gio::MenuItem::new(Some(&nat_label_str), Some("win.copy-native-value"));
+        let copy_nat_item = gio::MenuItem::new(Some(&nat_label_str), Some("win.copy-value"));
         let nat_variant = Variant::from(native_clone.as_str());
         copy_nat_item.set_attribute_value("target", Some(&nat_variant));
         menu_model.append_item(&copy_nat_item);
@@ -830,11 +818,24 @@ fn show_backlinks_window(app: &Application, parent: &ApplicationWindow, uri: Str
     let debug_clone = debug;
 
     glib::MainContext::default().spawn_local(async move {
-        populate_backlinks_grid(&app_clone, &window_clone, &grid_clone, &uri_clone, debug_clone).await;
+        populate_backlinks_grid(
+            &app_clone,
+            &window_clone,
+            &grid_clone,
+            &uri_clone,
+            debug_clone,
+        )
+        .await;
     });
 }
 
-async fn populate_backlinks_grid(app: &Application, window: &ApplicationWindow, grid: &Grid, uri: &str, debug: bool) {
+async fn populate_backlinks_grid(
+    app: &Application,
+    window: &ApplicationWindow,
+    grid: &Grid,
+    uri: &str,
+    debug: bool,
+) {
     while let Some(child) = grid.first_child() {
         grid.remove(&child);
     }
