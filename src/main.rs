@@ -30,6 +30,9 @@ const XSD_DATETYPE: &str = "http://www.w3.org/2001/XMLSchema#dateType";
 const RDFS_COMMENT: &str = "http://www.w3.org/2000/01/rdf-schema#comment";
 
 const FILEDATAOBJECT: &str = "http://tracker.api.gnome.org/ontology/v3/nfo#FileDataObject";
+const NIE_INTERPRETED_AS: &str =
+    "http://tracker.api.gnome.org/ontology/v3/nie#interpretedAs";
+const NIE_MIME_TYPE: &str = "http://tracker.api.gnome.org/ontology/v3/nie#mimeType";
 
 #[derive(Clone, Default)]
 struct TableRow {
@@ -619,14 +622,41 @@ fn looks_like_uri(s: &str) -> bool {
     Url::parse(s).is_ok()
 }
 
+fn tracker_content_type(uri: &str) -> Option<String> {
+    let conn =
+        SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None).ok()?;
+    let sparql = format!(
+        "SELECT ?ct WHERE {{ <{uri}> <{interp}> ?o . ?o <{mime}> ?ct }} LIMIT 1",
+        uri = uri,
+        interp = NIE_INTERPRETED_AS,
+        mime = NIE_MIME_TYPE
+    );
+    let cursor = conn.query(&sparql, None::<&Cancellable>).ok()?;
+    if cursor.next(None::<&Cancellable>).unwrap_or(false) {
+        let ct = cursor.string(0).unwrap_or_default().to_string();
+        if ct.is_empty() {
+            None
+        } else {
+            Some(ct)
+        }
+    } else {
+        None
+    }
+}
+
 fn uri_has_handler(uri: &str) -> Result<(), String> {
     if let Ok(url) = Url::parse(uri) {
         if url.scheme() == "file" {
             if let Ok(path) = url.to_file_path() {
                 if let Some(p) = path.to_str() {
-                    let (mime, _) = gio::content_type_guess(Some(p), b"");
+                    let mime = tracker_content_type(uri).unwrap_or_else(|| {
+                        let (guess, _) = gio::content_type_guess(Some(p), b"");
+                        guess.to_string()
+                    });
                     if gio::AppInfo::default_for_type(&mime, false).is_none() {
-                        return Err(format!("No application available for type \"{}\".", mime));
+                        return Err(format!(
+                            "No application available for type \"{}\".", mime
+                        ));
                     }
                 }
             }
