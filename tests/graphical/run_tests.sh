@@ -290,9 +290,9 @@ fi
 backlinks_window_id=$(xdotool search --name "Backlinks" | head -n 1)
 log "Backlinks window ID acquired: $backlinks_window_id."
 
-log "Waiting up to 10 seconds for query results to be displayed..."
+log "Waiting up to 20 seconds for query results to be displayed..."
 back_ready=false
-for i in {1..100}; do
+for i in {1..200}; do
     if grep -q "Backlinks query returned" "$APP_LOG"; then
         back_ready=true
         break
