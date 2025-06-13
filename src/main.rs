@@ -1421,3 +1421,112 @@ fn fetch_comment(predicate: &str) -> Option<String> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    // Bring symbols from the parent module into scope so the tests can call
+    // helper functions directly.
+    use super::*;
+
+    #[test]
+    fn ellipsize_shorter_than_limit() {
+        let input = "a".repeat(TOOLTIP_MAX_CHARS - 1);
+        assert_eq!(ellipsize(&input, TOOLTIP_MAX_CHARS), input);
+    }
+
+    #[test]
+    fn ellipsize_equal_to_limit() {
+        let input = "a".repeat(TOOLTIP_MAX_CHARS);
+        assert_eq!(ellipsize(&input, TOOLTIP_MAX_CHARS), input);
+    }
+
+    #[test]
+    fn ellipsize_longer_than_limit() {
+        let input = "a".repeat(TOOLTIP_MAX_CHARS + 5);
+        let expected = format!("{}…", "a".repeat(TOOLTIP_MAX_CHARS));
+        assert_eq!(ellipsize(&input, TOOLTIP_MAX_CHARS), expected);
+    }
+
+    #[test]
+    fn ellipsize_multibyte_characters() {
+        let input = "é".repeat(TOOLTIP_MAX_CHARS + 2);
+        let expected = format!("{}…", "é".repeat(TOOLTIP_MAX_CHARS));
+        assert_eq!(ellipsize(&input, TOOLTIP_MAX_CHARS), expected);
+    }
+
+    #[test]
+    fn friendly_label_basic() {
+        let uri = "https://example.com/FooBarBaz";
+        assert_eq!(friendly_label(uri), "Foo Bar Baz");
+    }
+
+    #[test]
+    fn friendly_label_trailing_slash() {
+        let uri = "https://example.com/FooBarBaz/";
+        assert_eq!(friendly_label(uri), "Foo Bar Baz");
+    }
+
+    #[test]
+    fn friendly_label_trailing_hash() {
+        let uri = "https://example.com/FooBarBaz#";
+        assert_eq!(friendly_label(uri), "Foo Bar Baz");
+    }
+
+    #[test]
+    fn friendly_value_formats_date() {
+        let raw = "2024-06-04T12:34:56Z";
+        let expected = glib::DateTime::from_iso8601(raw, None)
+            .and_then(|dt| dt.to_local())
+            .and_then(|ldt| ldt.format("%F %T"))
+            .unwrap();
+        assert_eq!(friendly_value(raw, XSD_DATETYPE), expected);
+    }
+
+    #[test]
+    fn friendly_value_invalid_date() {
+        let raw = "invalid";
+        assert_eq!(friendly_value(raw, XSD_DATETYPE), raw);
+    }
+
+    #[test]
+    fn friendly_value_unrelated_type() {
+        let raw = "hello";
+        assert_eq!(friendly_value(raw, "other"), raw);
+    }
+
+    #[test]
+    fn looks_like_uri_valid() {
+        assert!(looks_like_uri("https://example.com"));
+    }
+
+    #[test]
+    fn looks_like_uri_invalid() {
+        assert!(!looks_like_uri("not a uri"));
+    }
+
+    #[test]
+    fn looks_like_uri_date() {
+        assert!(!looks_like_uri("2024-06-04T12:34:56Z"));
+    }
+
+    #[test]
+    fn ellipsize_zero_limit() {
+        assert_eq!(ellipsize("hello", 0), "…");
+    }
+
+    #[test]
+    fn ellipsize_empty_string() {
+        assert_eq!(ellipsize("", 5), "");
+    }
+
+    #[test]
+    fn friendly_label_domain_only() {
+        let uri = "https://example.com";
+        assert_eq!(friendly_label(uri), "Example.com");
+    }
+
+    #[test]
+    fn looks_like_uri_file_scheme() {
+        assert!(looks_like_uri("file:///tmp/test"));
+    }
+}
