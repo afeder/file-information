@@ -3,11 +3,14 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use adw::prelude::*;
 use tracker::prelude::*;
+use log::debug;
+use env_logger;
+use clap::Parser;
+
+mod options;
 
 const APP_ID: &str = "com.example.DesktopFileInformation";
 
-/// Short usage message printed for `--help` and on invalid invocation.
-const MSG_USAGE: &str = "Usage: file-information [--uri|-u] [--debug|-d] <file-or-URI>";
 
 const TOOLTIP_MAX_CHARS: usize = 80;
 const COMMENT_TOOLTIP_MAX_CHARS: usize = TOOLTIP_MAX_CHARS * 3;
@@ -48,51 +51,32 @@ fn main() {
 
     // Register a handler for command-line invocation of the app (when started from terminal or by opening files).
     app.connect_command_line(|app, cmd_line| {
-        // Collect all the arguments passed to the application, including the binary name.
         let argv = cmd_line.arguments();
-        // Declare flag for whether to treat the positional argument as a URI directly.
-        let mut flag_uri = false;
-        // Declare flag for whether to enable debug output.
-        let mut flag_debug = false;
-        // List of non-flag arguments, e.g., file paths or URIs.
-        let mut items = Vec::new();
-
-        // Create an iterator over arguments, skipping the binary name itself.
-        let mut iter = argv.iter().skip(1).map(|s| s.to_string_lossy().into_owned());
-        while let Some(arg) = iter.next() {
-            match arg.as_str() {
-                // If a --help or -h flag is found, print usage information and exit immediately.
-                "-h" | "--help" => {
-                    eprintln!("{}", MSG_USAGE);
-                    return 0;
-                }
-                // If a --uri or -u flag is found, set flag_uri to true.
-                "-u" | "--uri" => flag_uri = true,
-                // If a --debug or -d flag is found, set flag_debug to true.
-                "-d" | "--debug" => flag_debug = true,
-                // Otherwise, treat the argument as a positional item and add to items vector.
-                _ => items.push(arg),
+        let opts = match options::Options::try_parse_from(argv) {
+            Ok(c) => c,
+            Err(e) => {
+                e.print().expect("failed to write clap error");
+                return e.exit_code();
             }
-        }
+        };
 
-        // If there is at least one positional argument, treat it as the main identifier or file to open.
-        if let Some(id) = items.first() {
-            // If the URI flag is set, use the argument as-is; otherwise, convert it to a URI.
-            let uri = if flag_uri {
-                id.clone()
+        env_logger::Builder::new()
+            .filter_level(if opts.debug {
+                log::LevelFilter::Debug
             } else {
-                gio::File::for_path(id).uri().to_string()
-            };
-            // Activate the application, which may trigger window creation or bring it to the foreground.
-            app.activate();
-            // Launch the main user interface, passing the URI and debug flag.
-            open_subject_window(app, uri, flag_debug);
-            0 // Return 0 to indicate successful handling.
+                log::LevelFilter::Warn
+            })
+            .init();
+
+        let uri = if opts.uri {
+            opts.item.clone()
         } else {
-            // If no positional argument is present, show usage and return an error code.
-            eprintln!("{}", MSG_USAGE);
-            1
-        }
+            gio::File::for_path(&opts.item).uri().to_string()
+        };
+
+        app.activate();
+        open_subject_window(app, uri, opts.debug);
+        0
     });
 
     // Register a handler for when files are opened by the system with the app (e.g., double-click
@@ -317,7 +301,7 @@ fn open_subject_window(app: &adw::Application, uri: String, debug: bool) {
                     if let Some(h) = handler_clone.borrow_mut().take() {
                         clk.disconnect(h);
                     }
-                    eprintln!(
+                    debug!(
                         "DEBUG: results displayed rows={} file_data={}",
                         row_count,
                         is_file_data_object
@@ -556,7 +540,7 @@ async fn populate_backlinks_grid(
         Err(err) => {
             // If connection fails, show an error dialog and return early.
             if debug {
-                eprintln!("Failed to connect to Tracker: {err}");
+                debug!("Failed to connect to Tracker: {err}");
             }
             let dialog = gtk::MessageDialog::builder()
                 .transient_for(window)
@@ -576,14 +560,14 @@ async fn populate_backlinks_grid(
     // Query for all subject-predicate pairs where the object matches the given URI.
     let sparql = format!("SELECT DISTINCT ?s ?p WHERE {{ ?s ?p <{uri}> }}", uri = uri);
     if debug {
-        eprintln!("Running SPARQL query: {sparql}");
+        debug!("Running SPARQL query: {sparql}");
     }
     let cursor = match conn.query_future(&sparql).await {
         Ok(c) => c,
         Err(err) => {
             // If query fails, show an error dialog and return early.
             if debug {
-                eprintln!("SPARQL query error: {err}");
+                debug!("SPARQL query error: {err}");
             }
             let dialog = gtk::MessageDialog::builder()
                 .transient_for(window)
@@ -695,7 +679,7 @@ async fn populate_backlinks_grid(
 
     // ---- Final Debug Output ----
     if debug {
-        eprintln!("Backlinks query returned {row} rows");
+        debug!("Backlinks query returned {row} rows");
     }
 }
 
@@ -825,7 +809,7 @@ async fn populate_grid(
 
     // If debugging is enabled, print which URI we are processing.
     if debug {
-        eprintln!("Fetching backlinks for {uri}");
+        debug!("Fetching backlinks for {uri}");
     }
 
     // Initialize a vector to collect all the table rows we generate.
@@ -880,7 +864,7 @@ async fn populate_grid(
     // ---- Query Tracker for Additional Metadata ----
 
     if debug {
-        eprintln!("Connecting to Tracker database for metadata…");
+        debug!("Connecting to Tracker database for metadata…");
     }
     // Try to connect to the Tracker D-Bus service for SPARQL queries.
     let conn = match tracker::SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None) {
@@ -888,7 +872,7 @@ async fn populate_grid(
         Err(err) => {
             // On error, show an error dialog and return empty result.
             if debug {
-                eprintln!("Failed to connect to Tracker: {err}");
+                debug!("Failed to connect to Tracker: {err}");
             }
             let dialog = gtk::MessageDialog::builder()
                 .transient_for(window)
@@ -914,14 +898,14 @@ async fn populate_grid(
         uri = uri
     );
     if debug {
-        eprintln!("Running SPARQL query: {sparql}");
+        debug!("Running SPARQL query: {sparql}");
     }
     // Run the query asynchronously; handle errors by reporting them to the user.
     let cursor = match conn.query_future(&sparql).await {
         Ok(c) => c,
         Err(err) => {
             if debug {
-                eprintln!("SPARQL query error: {err}");
+                debug!("SPARQL query error: {err}");
             }
             let dialog = gtk::MessageDialog::builder()
                 .transient_for(window)
@@ -1134,8 +1118,8 @@ async fn populate_grid(
 
     // Print summary of query results if debugging.
     if debug {
-        eprintln!(
-            "DEBUG: query returned rows={} file_data={}",
+        debug!(
+            "query returned rows={} file_data={}",
             rows_vec.len() - 1,
             is_file_data_object
         );
@@ -1528,5 +1512,11 @@ mod tests {
     #[test]
     fn looks_like_uri_file_scheme() {
         assert!(looks_like_uri("file:///tmp/test"));
+    }
+
+    #[test]
+    fn uri_has_handler_unknown_scheme() {
+        let uri = "nosuchscheme://foo";
+        assert!(uri_has_handler(uri).is_err());
     }
 }
