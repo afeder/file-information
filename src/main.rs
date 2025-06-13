@@ -617,7 +617,7 @@ async fn populate_backlinks_grid(
             lbl_link.set_margin_top(4);
             lbl_link.set_margin_bottom(4);
             lbl_link.set_wrap(true);
-            lbl_link.set_wrap_mode(pango::WrapMode::WordChar);
+            lbl_link.set_wrap_mode(gtk::pango::WrapMode::WordChar);
             lbl_link.set_max_width_chars(80);
 
             // Make the link clickable: opens the subject in the UI.
@@ -646,7 +646,7 @@ async fn populate_backlinks_grid(
             lbl_val.set_margin_top(4);
             lbl_val.set_margin_bottom(4);
             lbl_val.set_wrap(true);
-            lbl_val.set_wrap_mode(pango::WrapMode::WordChar);
+            lbl_val.set_wrap_mode(gtk::pango::WrapMode::WordChar);
             lbl_val.set_max_width_chars(80);
 
             add_copy_menu(
@@ -849,7 +849,7 @@ async fn populate_grid(
     uri_label.set_margin_top(4);
     uri_label.set_margin_bottom(4);
     uri_label.set_wrap(true);
-    uri_label.set_wrap_mode(pango::WrapMode::WordChar);
+    uri_label.set_wrap_mode(gtk::pango::WrapMode::WordChar);
     uri_label.set_max_width_chars(80);
 
     // Attach context menu actions for copying the displayed and native values from the label.
@@ -1060,7 +1060,7 @@ async fn populate_grid(
                     });
 
                     lbl_link.set_wrap(true);
-                    lbl_link.set_wrap_mode(pango::WrapMode::WordChar);
+                    lbl_link.set_wrap_mode(gtk::pango::WrapMode::WordChar);
                     lbl_link.set_max_width_chars(80);
 
                     // Add context menu for copying object values.
@@ -1099,7 +1099,7 @@ async fn populate_grid(
                         lbl_val.set_margin_top(4);
                         lbl_val.set_margin_bottom(4);
                         lbl_val.set_wrap(true);
-                        lbl_val.set_wrap_mode(pango::WrapMode::WordChar);
+                        lbl_val.set_wrap_mode(gtk::pango::WrapMode::WordChar);
                         lbl_val.set_max_width_chars(80);
 
                         add_copy_menu(
