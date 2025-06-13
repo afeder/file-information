@@ -105,6 +105,7 @@ dependencies = [
  "glib",
  "gtk4",
  "libadwaita",
+ "pango",
  "system-deps",
  "tracker-rs",
  "url",

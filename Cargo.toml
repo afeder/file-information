@@ -14,6 +14,7 @@ csv = "1"
 url = "2"
 
 tracker     = { package = "tracker-rs", version = "0.6" }
+pango = "0.20.10"
 
 [package.metadata.deb]
 maintainer = "Example Maintainer <maintainer@example.com>"
