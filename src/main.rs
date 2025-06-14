@@ -1,9 +1,9 @@
-use adw::prelude::*;
-use clap::Parser;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
+use std::collections::HashMap;
+use adw::prelude::*;
 use tracker::prelude::*;
+use clap::Parser;
 
 mod options;
 
