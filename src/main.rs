@@ -1,9 +1,9 @@
+use adw::prelude::*;
+use clap::Parser;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::cell::RefCell;
-use adw::prelude::*;
 use tracker::prelude::*;
-use clap::Parser;
 
 mod options;
 
@@ -194,7 +194,9 @@ fn open_subject_window(app: &adw::Application, uri: String, debug: bool) {
     copy_button.connect_clicked(move |_| {
         let rows = data_clone.borrow();
         // Prepare a CSV writer and add headers.
-        let mut wtr = csv::WriterBuilder::new().has_headers(true).from_writer(vec![]);
+        let mut wtr = csv::WriterBuilder::new()
+            .has_headers(true)
+            .from_writer(vec![]);
         let _ = wtr.write_record([
             "Display Predicate",
             "Native Predicate",
@@ -321,7 +323,7 @@ fn add_common_actions(window: &adw::ApplicationWindow) {
     // ----- "Copy Value" Action -----
     // Create a new action named "copy-value" that accepts a single string argument.
     // This action allows copying arbitrary string data to the system clipboard.
-    let copy_value = gio::SimpleAction::new("copy-value", Some(&glib::VariantTy::STRING));
+    let copy_value = gio::SimpleAction::new("copy-value", Some(glib::VariantTy::STRING));
 
     // Register a handler for when the "copy-value" action is activated.
     // This closure receives the action object and the optional parameter (expected to be a string).
@@ -348,7 +350,7 @@ fn add_common_actions(window: &adw::ApplicationWindow) {
     // We clone the window so the action's closure can use it for dialog ownership.
     let win_for_uri = window.clone();
     // Create a new action named "open-uri" that takes a string argument (the URI to open).
-    let open_uri_action = gio::SimpleAction::new("open-uri", Some(&glib::VariantTy::STRING));
+    let open_uri_action = gio::SimpleAction::new("open-uri", Some(glib::VariantTy::STRING));
 
     // Register a handler for the "open-uri" action.
     open_uri_action.connect_activate(move |_action, param| {
@@ -405,7 +407,12 @@ fn add_common_actions(window: &adw::ApplicationWindow) {
 /// * `parent` - The parent window to which this window will be transient (modal behavior).
 /// * `uri` - The URI of the object for which to display backlinks.
 /// * `debug` - If true, prints debug information during operation.
-fn open_object_window(app: &adw::Application, parent: &adw::ApplicationWindow, uri: String, debug: bool) {
+fn open_object_window(
+    app: &adw::Application,
+    parent: &adw::ApplicationWindow,
+    uri: String,
+    debug: bool,
+) {
     // ---- Window Construction ----
 
     // Create a new GTK application window, sized and titled appropriately for backlinks.
@@ -533,7 +540,11 @@ async fn populate_backlinks_grid(
     }
 
     // ---- Connect to Tracker and Handle Errors ----
-    let conn = match tracker::SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None) {
+    let conn = match tracker::SparqlConnection::bus_new(
+        "org.freedesktop.Tracker3.Miner.Files",
+        None,
+        None,
+    ) {
         Ok(c) => c,
         Err(err) => {
             // If connection fails, show an error dialog and return early.
@@ -545,7 +556,7 @@ async fn populate_backlinks_grid(
                 .modal(true)
                 .message_type(gtk::MessageType::Error)
                 .text("Failed to connect to Tracker")
-                .secondary_text(&format!("{err}"))
+                .secondary_text(format!("{err}"))
                 .buttons(gtk::ButtonsType::Ok)
                 .build();
             dialog.connect_response(|dlg, _| dlg.close());
@@ -572,7 +583,7 @@ async fn populate_backlinks_grid(
                 .modal(true)
                 .message_type(gtk::MessageType::Error)
                 .text("SPARQL query error")
-                .secondary_text(&format!("{err}"))
+                .secondary_text(format!("{err}"))
                 .buttons(gtk::ButtonsType::Ok)
                 .build();
             dialog.connect_response(|dlg, _| dlg.close());
@@ -710,9 +721,7 @@ fn uri_has_handler(uri: &str) -> Result<(), String> {
                     // Check if there is a default application for this MIME type.
                     // If not, return an error indicating the missing handler.
                     if gio::AppInfo::default_for_type(&mime, false).is_none() {
-                        return Err(format!(
-                            "No application available for type \"{}\".", mime
-                        ));
+                        return Err(format!("No application available for type \"{}\".", mime));
                     }
                 }
             }
@@ -744,7 +753,8 @@ fn get_indexed_content_type(uri: &str) -> Option<String> {
     // Attempt to create a connection to the Tracker D-Bus service.
     // If the service is unavailable or the connection fails, return None immediately.
     let conn =
-        tracker::SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None).ok()?;
+        tracker::SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None)
+            .ok()?;
 
     // Prepare a SPARQL query to fetch the indexed content type for the given URI.
     // The query traverses from the file node to its "interpreted as" node, then retrieves its MIME type.
@@ -764,11 +774,7 @@ fn get_indexed_content_type(uri: &str) -> Option<String> {
         // Extract the first string result (expected to be the content type).
         let ct = cursor.string(0).unwrap_or_default().to_string();
         // If the content type is an empty string, treat as not found.
-        if ct.is_empty() {
-            None
-        } else {
-            Some(ct)
-        }
+        if ct.is_empty() { None } else { Some(ct) }
     } else {
         // If the query returned no results, return None.
         None
@@ -865,7 +871,11 @@ async fn populate_grid(
         log::debug!("Connecting to Tracker database for metadata…");
     }
     // Try to connect to the Tracker D-Bus service for SPARQL queries.
-    let conn = match tracker::SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None) {
+    let conn = match tracker::SparqlConnection::bus_new(
+        "org.freedesktop.Tracker3.Miner.Files",
+        None,
+        None,
+    ) {
         Ok(c) => c,
         Err(err) => {
             // On error, show an error dialog and return empty result.
@@ -877,7 +887,7 @@ async fn populate_grid(
                 .modal(true)
                 .message_type(gtk::MessageType::Error)
                 .text("Failed to connect to Tracker")
-                .secondary_text(&format!("{err}"))
+                .secondary_text(format!("{err}"))
                 .buttons(gtk::ButtonsType::Ok)
                 .build();
             dialog.connect_response(|dlg, _| dlg.close());
@@ -910,7 +920,7 @@ async fn populate_grid(
                 .modal(true)
                 .message_type(gtk::MessageType::Error)
                 .text("SPARQL query error")
-                .secondary_text(&format!("{err}"))
+                .secondary_text(format!("{err}"))
                 .buttons(gtk::ButtonsType::Ok)
                 .build();
             dialog.connect_response(|dlg, _| dlg.close());
@@ -1055,44 +1065,42 @@ async fn populate_grid(
                     );
 
                     lbl_link.upcast()
+                } else if obj.contains('\n') {
+                    // For typed multi-line values, display in a non-editable text view.
+                    let txt = gtk::TextView::new();
+                    txt.set_editable(false);
+                    txt.set_cursor_visible(false);
+                    txt.style_context().add_class("bordered");
+                    txt.set_wrap_mode(gtk::WrapMode::Word);
+                    txt.set_margin_start(6);
+                    txt.set_margin_end(9);
+                    txt.set_margin_top(4);
+                    txt.set_margin_bottom(4);
+
+                    let buffer = txt.buffer();
+                    buffer.set_text(&displayed_str);
+                    let start = buffer.start_iter();
+                    buffer.place_cursor(&start);
+                    txt.upcast()
                 } else {
-                    if obj.contains('\n') {
-                        // For typed multi-line values, display in a non-editable text view.
-                        let txt = gtk::TextView::new();
-                        txt.set_editable(false);
-                        txt.set_cursor_visible(false);
-                        txt.style_context().add_class("bordered");
-                        txt.set_wrap_mode(gtk::WrapMode::Word);
-                        txt.set_margin_start(6);
-                        txt.set_margin_end(9);
-                        txt.set_margin_top(4);
-                        txt.set_margin_bottom(4);
+                    // For all other typed values, display in a standard label.
+                    let lbl_val = gtk::Label::new(Some(&displayed_str));
+                    lbl_val.set_halign(gtk::Align::Start);
+                    lbl_val.set_margin_start(6);
+                    lbl_val.set_margin_top(4);
+                    lbl_val.set_margin_bottom(4);
+                    lbl_val.set_wrap(true);
+                    lbl_val.set_wrap_mode(gtk::pango::WrapMode::WordChar);
+                    lbl_val.set_max_width_chars(80);
 
-                        let buffer = txt.buffer();
-                        buffer.set_text(&displayed_str);
-                        let start = buffer.start_iter();
-                        buffer.place_cursor(&start);
-                        txt.upcast()
-                    } else {
-                        // For all other typed values, display in a standard label.
-                        let lbl_val = gtk::Label::new(Some(&displayed_str));
-                        lbl_val.set_halign(gtk::Align::Start);
-                        lbl_val.set_margin_start(6);
-                        lbl_val.set_margin_top(4);
-                        lbl_val.set_margin_bottom(4);
-                        lbl_val.set_wrap(true);
-                        lbl_val.set_wrap_mode(gtk::pango::WrapMode::WordChar);
-                        lbl_val.set_max_width_chars(80);
-
-                        add_copy_menu(
-                            &lbl_val,
-                            &displayed_str,
-                            &native_str,
-                            "Copy Displayed Value",
-                            "Copy Native Value",
-                        );
-                        lbl_val.upcast()
-                    }
+                    add_copy_menu(
+                        &lbl_val,
+                        &displayed_str,
+                        &native_str,
+                        "Copy Displayed Value",
+                        "Copy Native Value",
+                    );
+                    lbl_val.upcast()
                 };
 
                 // Set a tooltip for the native (raw) value.
@@ -1296,10 +1304,7 @@ fn friendly_label(uri: &str) -> String {
 
     // Find the last component after a '#' or '/' (the "local name" in RDF).
     // If not found, fall back to the whole trimmed string.
-    let last = trimmed
-        .rsplit(&['#', '/'][..])
-        .next()
-        .unwrap_or(trimmed);
+    let last = trimmed.rsplit(&['#', '/'][..]).next().unwrap_or(trimmed);
 
     // Vector to accumulate each separated word as we split the identifier.
     let mut words = Vec::new();
@@ -1382,7 +1387,8 @@ fn fetch_comment(predicate: &str) -> Option<String> {
     // Attempt to establish a connection to the Tracker D-Bus SPARQL service.
     // If the connection fails, return None immediately.
     let conn =
-        tracker::SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None).ok()?;
+        tracker::SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None)
+            .ok()?;
 
     // Prepare a SPARQL query that asks for the comment (rdfs:comment) of the predicate.
     // The query is limited to return at most one comment string (?c).
