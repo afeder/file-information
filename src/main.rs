@@ -11,7 +11,6 @@ mod options;
 
 const APP_ID: &str = "com.example.DesktopFileInformation";
 
-
 const TOOLTIP_MAX_CHARS: usize = 80;
 const COMMENT_TOOLTIP_MAX_CHARS: usize = TOOLTIP_MAX_CHARS * 3;
 
@@ -114,10 +113,10 @@ fn open_subject_window(app: &adw::Application, uri: String, debug: bool) {
         .title("File Information")
         .build();
 
-    // Attach common actions such as keyboard shortcuts to the window.
+    // Add common actions (i.e., copy to clipboard, open URI) for context menus in this window.
     add_common_actions(&window);
 
-    // Prepare a CSS provider and style the grid and its children for a consistent look.
+    // Prepare a CSS provider and style the grid and its children.
     let provider = gtk::CssProvider::new();
     let css = r#"
         grid#data-grid {
@@ -420,7 +419,7 @@ fn open_object_window(app: &adw::Application, parent: &adw::ApplicationWindow, u
         .title("Backlinks")
         .build();
 
-    // Add common actions (e.g., clipboard, open URI) for menu/context use in this window.
+    // Add common actions (i.e., copy to clipboard, open URI) for context menus in this window.
     add_common_actions(&window);
 
     // ---- Header Bar ----
