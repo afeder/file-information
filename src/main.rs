@@ -3,8 +3,6 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use adw::prelude::*;
 use tracker::prelude::*;
-use log::debug;
-use env_logger;
 use clap::Parser;
 
 mod options;
@@ -51,6 +49,7 @@ fn main() {
     // Register a handler for command-line invocation of the app (when started from terminal or by opening files).
     app.connect_command_line(|app, cmd_line| {
         let argv = cmd_line.arguments();
+        // Parse command-line arguments using clap
         let opts = match options::Options::try_parse_from(argv) {
             Ok(c) => c,
             Err(e) => {
@@ -300,7 +299,7 @@ fn open_subject_window(app: &adw::Application, uri: String, debug: bool) {
                     if let Some(h) = handler_clone.borrow_mut().take() {
                         clk.disconnect(h);
                     }
-                    debug!(
+                    log::debug!(
                         "DEBUG: results displayed rows={} file_data={}",
                         row_count,
                         is_file_data_object
@@ -539,7 +538,7 @@ async fn populate_backlinks_grid(
         Err(err) => {
             // If connection fails, show an error dialog and return early.
             if debug {
-                debug!("Failed to connect to Tracker: {err}");
+                log::debug!("Failed to connect to Tracker: {err}");
             }
             let dialog = gtk::MessageDialog::builder()
                 .transient_for(window)
@@ -559,14 +558,14 @@ async fn populate_backlinks_grid(
     // Query for all subject-predicate pairs where the object matches the given URI.
     let sparql = format!("SELECT DISTINCT ?s ?p WHERE {{ ?s ?p <{uri}> }}", uri = uri);
     if debug {
-        debug!("Running SPARQL query: {sparql}");
+        log::debug!("Running SPARQL query: {sparql}");
     }
     let cursor = match conn.query_future(&sparql).await {
         Ok(c) => c,
         Err(err) => {
             // If query fails, show an error dialog and return early.
             if debug {
-                debug!("SPARQL query error: {err}");
+                log::debug!("SPARQL query error: {err}");
             }
             let dialog = gtk::MessageDialog::builder()
                 .transient_for(window)
@@ -678,7 +677,7 @@ async fn populate_backlinks_grid(
 
     // ---- Final Debug Output ----
     if debug {
-        debug!("Backlinks query returned {row} rows");
+        log::debug!("Backlinks query returned {row} rows");
     }
 }
 
@@ -808,7 +807,7 @@ async fn populate_grid(
 
     // If debugging is enabled, print which URI we are processing.
     if debug {
-        debug!("Fetching backlinks for {uri}");
+        log::debug!("Fetching backlinks for {uri}");
     }
 
     // Initialize a vector to collect all the table rows we generate.
@@ -863,7 +862,7 @@ async fn populate_grid(
     // ---- Query Tracker for Additional Metadata ----
 
     if debug {
-        debug!("Connecting to Tracker database for metadata…");
+        log::debug!("Connecting to Tracker database for metadata…");
     }
     // Try to connect to the Tracker D-Bus service for SPARQL queries.
     let conn = match tracker::SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None) {
@@ -871,7 +870,7 @@ async fn populate_grid(
         Err(err) => {
             // On error, show an error dialog and return empty result.
             if debug {
-                debug!("Failed to connect to Tracker: {err}");
+                log::debug!("Failed to connect to Tracker: {err}");
             }
             let dialog = gtk::MessageDialog::builder()
                 .transient_for(window)
@@ -897,14 +896,14 @@ async fn populate_grid(
         uri = uri
     );
     if debug {
-        debug!("Running SPARQL query: {sparql}");
+        log::debug!("Running SPARQL query: {sparql}");
     }
     // Run the query asynchronously; handle errors by reporting them to the user.
     let cursor = match conn.query_future(&sparql).await {
         Ok(c) => c,
         Err(err) => {
             if debug {
-                debug!("SPARQL query error: {err}");
+                log::debug!("SPARQL query error: {err}");
             }
             let dialog = gtk::MessageDialog::builder()
                 .transient_for(window)
@@ -1117,7 +1116,7 @@ async fn populate_grid(
 
     // Print summary of query results if debugging.
     if debug {
-        debug!(
+        log::debug!(
             "query returned rows={} file_data={}",
             rows_vec.len() - 1,
             is_file_data_object
