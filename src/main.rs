@@ -1,9 +1,9 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::collections::HashMap;
 use adw::prelude::*;
-use tracker::prelude::*;
 use clap::Parser;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+use tracker::prelude::*;
 
 mod options;
 
@@ -739,11 +739,7 @@ fn uri_has_handler(uri: &str) -> Result<(), String> {
 /// This helper wraps `tracker::SparqlConnection::bus_new` with the
 /// fixed service name used throughout the application.
 fn create_store_connection() -> Result<tracker::SparqlConnection, glib::Error> {
-    tracker::SparqlConnection::bus_new(
-        "org.freedesktop.Tracker3.Miner.Files",
-        None,
-        None,
-    )
+    tracker::SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None)
 }
 
 /// Queries the Tracker index for the MIME content type associated with a given URI, if available.
