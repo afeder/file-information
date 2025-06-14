@@ -540,11 +540,7 @@ async fn populate_backlinks_grid(
     }
 
     // ---- Connect to Tracker and Handle Errors ----
-    let conn = match tracker::SparqlConnection::bus_new(
-        "org.freedesktop.Tracker3.Miner.Files",
-        None,
-        None,
-    ) {
+    let conn = match create_store_connection() {
         Ok(c) => c,
         Err(err) => {
             // If connection fails, show an error dialog and return early.
@@ -738,6 +734,18 @@ fn uri_has_handler(uri: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Creates a new connection to the Tracker store via D-Bus.
+///
+/// This helper wraps `tracker::SparqlConnection::bus_new` with the
+/// fixed service name used throughout the application.
+fn create_store_connection() -> Result<tracker::SparqlConnection, glib::Error> {
+    tracker::SparqlConnection::bus_new(
+        "org.freedesktop.Tracker3.Miner.Files",
+        None,
+        None,
+    )
+}
+
 /// Queries the Tracker index for the MIME content type associated with a given URI, if available.
 ///
 /// This function attempts to determine the indexed content type (MIME type) for a file or resource
@@ -752,9 +760,7 @@ fn uri_has_handler(uri: &str) -> Result<(), String> {
 fn get_indexed_content_type(uri: &str) -> Option<String> {
     // Attempt to create a connection to the Tracker D-Bus service.
     // If the service is unavailable or the connection fails, return None immediately.
-    let conn =
-        tracker::SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None)
-            .ok()?;
+    let conn = create_store_connection().ok()?;
 
     // Prepare a SPARQL query to fetch the indexed content type for the given URI.
     // The query traverses from the file node to its "interpreted as" node, then retrieves its MIME type.
@@ -871,11 +877,7 @@ async fn populate_grid(
         log::debug!("Connecting to Tracker database for metadata…");
     }
     // Try to connect to the Tracker D-Bus service for SPARQL queries.
-    let conn = match tracker::SparqlConnection::bus_new(
-        "org.freedesktop.Tracker3.Miner.Files",
-        None,
-        None,
-    ) {
+    let conn = match create_store_connection() {
         Ok(c) => c,
         Err(err) => {
             // On error, show an error dialog and return empty result.
@@ -1386,9 +1388,7 @@ fn friendly_value(obj: &str, dtype: &str) -> String {
 fn fetch_comment(predicate: &str) -> Option<String> {
     // Attempt to establish a connection to the Tracker D-Bus SPARQL service.
     // If the connection fails, return None immediately.
-    let conn =
-        tracker::SparqlConnection::bus_new("org.freedesktop.Tracker3.Miner.Files", None, None)
-            .ok()?;
+    let conn = create_store_connection().ok()?;
 
     // Prepare a SPARQL query that asks for the comment (rdfs:comment) of the predicate.
     // The query is limited to return at most one comment string (?c).
